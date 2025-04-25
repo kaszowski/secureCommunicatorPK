@@ -1,0 +1,31 @@
+# Node modules for all packages
+node_modules
+**/node_modules
+
+# Build output directories
+secureCommunicatorFrontend/build/
+secureCommunicatorBackend/build/
+
+# Log files
+*.log
+
+# Local environment files
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Build artifacts
+dist/
+build/
+
+# Database dumps (if you don't want to version control these)
+db/dump_*.sql
