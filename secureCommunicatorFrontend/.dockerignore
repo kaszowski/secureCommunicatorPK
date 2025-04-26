@@ -1,0 +1,19 @@
+# Ignore node_modules to prevent copying local dependencies
+node_modules
+**/node_modules
+
+# Ignore build artifacts (if generated locally)
+build
+dist
+
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore local environment files and logs
+.env
+*.log
+
+# Ignore editor-specific files
+.vscode/
+.idea/
