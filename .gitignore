@@ -26,6 +26,3 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
-
-# Database dumps (if you don't want to version control these)
-db/dump_*.sql

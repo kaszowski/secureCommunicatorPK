@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DUMP_FILE="./db/dump_23_04_1725.sql"
+DUMP_FILE="./db/dump_01_05_2110.sql"
 DB_CONTAINER_NAME="db"
 DB_NAME="mydb"
 DB_USER="user"
