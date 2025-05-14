@@ -8,6 +8,7 @@ interface ButtonProps {
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   color?: 'secondary' | 'success' | 'error';
+  props?: React.InputHTMLAttributes<HTMLInputElement>;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,7 +17,8 @@ export const Button: React.FC<ButtonProps> = ({
   isDisabled = false,
   onClick,
   type = 'button',
-  color
+  color,
+  ...props
 }) => {
   return (
     <MuiButton
@@ -25,8 +27,11 @@ export const Button: React.FC<ButtonProps> = ({
       type={type}
       disabled={isDisabled}
       onClick={onClick}
+      {...props}
     >
       {children}
     </MuiButton>
   );
 };
+
+export default Button;
