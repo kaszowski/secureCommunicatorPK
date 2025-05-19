@@ -62,6 +62,25 @@ async function checkUserExists(userId)
     }
 }
 
+/**
+ * Sprawdza, czy użytkownik o podanym emailu istnieje.
+ * @param {string} email - Email użytkownika.
+ * @returns {Promise<boolean>} True, jeśli użytkownik z tym emailem istnieje, false w przeciwnym razie.
+ */
+async function checkEmailExists(email) 
+{    try 
+    {
+        const result = await knex('User')
+            .where({ Email: email })
+            .first(knex.raw('1'));
+        return !!result;
+    } 
+    catch (error)
+    {
+        console.error('Błąd podczas sprawdzania istnienia emaila:', error);
+        throw error;
+    }
+}
 
 /**
  * Pobiera dane użytkownika po ID, z wyłączeniem niektórych pól.
@@ -131,6 +150,7 @@ module.exports =
     findUserByUsername,
     getUserKeys,
     checkUserExists,
+    checkEmailExists,
     getUserById,
     getUserConversations,
     getMessagesInConversation
