@@ -9,11 +9,11 @@ exports.up = async function(knex)
   {
     table.uuid('ConversationId').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('Name', 255).nullable();
-    table.binary('Avatar').nullable(); // BYTEA to binary
-    table.binary('Background').nullable(); // BYTEA to binary
-    table.smallint('Status').defaultTo(0); // Dodano
-    table.timestamp('StatusTimestamp').defaultTo(knex.fn.now()); // Dodano
-    table.check('"Status" IN (0, 1)'); // Dodano
+    table.binary('Avatar').nullable();
+    table.binary('Background').nullable();
+    table.smallint('Status').defaultTo(0);
+    table.timestamp('StatusTimestamp').defaultTo(knex.fn.now());
+    table.check('"Status" IN (0, 1)'); // 0: Aktywna, 1: Archiwizowana
   })
   .then(() => {
     return knex.raw('CREATE INDEX IF NOT EXISTS idx_conversation_name ON "Conversation" ("Name")');

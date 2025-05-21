@@ -14,7 +14,7 @@ exports.up = async function(knex)
     table.string('Email', 255).notNullable().unique();
     table.timestamp('UpdatedAt').defaultTo(knex.fn.now());
     table.text('PublicKey').notNullable();
-    table.text('PrivateKey').nullable();
+    table.string('PrivateKey').nullable();
   })
   .then(() => {
     return knex.raw('CREATE INDEX IF NOT EXISTS idx_user_publickey ON "User" ("PublicKey")');

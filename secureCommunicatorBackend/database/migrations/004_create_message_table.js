@@ -32,5 +32,5 @@ exports.up = async function(knex)
  */
 exports.down = async function(knex) 
 {
-  await knex.raw('DROP TABLE IF EXISTS "Message" CASCADE'); // Zmieniono na raw SQL dla CASCADE
+  await knex.raw('DROP TABLE IF EXISTS "Message" CASCADE');
 };
