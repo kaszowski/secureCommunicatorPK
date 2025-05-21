@@ -10,7 +10,6 @@ describe('Button test', () => {
     expect(buttonElement).toBeTruthy();
   });
 
-  /*
   test('disables the button when isDisabled is true', () => {
     render(<Button isDisabled>Disabled Button</Button>);
     const buttonElement = screen.getByRole('button', {
@@ -19,7 +18,6 @@ describe('Button test', () => {
     // Check if the button is disabled via its disabled property
     expect(buttonElement.disabled).toBe(true);
   });
-  */
 
   test('calls onClick handler when the button is clicked', () => {
     const handleClick = vi.fn();
