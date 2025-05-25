@@ -10,6 +10,7 @@ exports.up = async function(knex)
     table.uuid('UserId').notNullable();
     table.uuid('ConversationId').notNullable();
     table.smallint('Attributes').nullable();
+    table.text('EncryptedConversationKey').notNullable();
     table.primary(['UserId', 'ConversationId']);
     table.foreign('UserId').references('UserId').inTable('User').onDelete('CASCADE');
     table.foreign('ConversationId').references('ConversationId').inTable('Conversation').onDelete('CASCADE');

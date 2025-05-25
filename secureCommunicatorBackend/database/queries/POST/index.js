@@ -134,10 +134,84 @@ async function addMessageToConversation(conversationId, userId, content)
     }
 }
 
+/**
+ * Tworzy nową konwersację pomiędzy dwoma użytkownikami.
+ * @param {string} userId1 - ID użytkownika inicjującego konwersację.
+ * @param {string} userId2 - ID drugiego użytkownika.
+ * @param {string} encryptedConversationKeyUser1 - Zaszyfrowany klucz konwersacji dla użytkownika 1.
+ * @param {string} encryptedConversationKeyUser2 - Zaszyfrowany klucz konwersacji dla użytkownika 2.
+ * @returns {Promise<string|boolean>} ID nowej konwersacji w przypadku sukcesu, w przeciwnym razie false.
+ */
+async function createConversation(userId1, userId2, encryptedConversationKeyUser1, encryptedConversationKeyUser2) 
+{
+    try 
+    {
+        const isBlocked1 = await knex('BlockedUser')
+            .where({ UserId: userId1, BlockedUserId: userId2 })
+            .first();
+        const isBlocked2 = await knex('BlockedUser')
+            .where({ UserId: userId2, BlockedUserId: userId1 })
+            .first();
+
+        if (isBlocked1 || isBlocked2) 
+        {
+            console.log('Nie można utworzyć konwersacji: jeden z użytkowników zablokował drugiego.');
+            return false;
+        }
+
+        const user2Details = await knex('User')
+            .where({ UserId: userId2 })
+            .select('UsernameShow')
+            .first();
+
+        if (!user2Details) 
+        {
+            console.error('Błąd w createConversation: Nie znaleziono drugiego użytkownika.');
+            return false;
+        }
+
+        const conversationName = user2Details.UsernameShow;
+        let newConversationId;
+
+        await knex.transaction(async trx => 
+        {
+            const [newConversation] = await trx('Conversation')
+                .insert({
+                    Name: conversationName,
+                })
+                .returning('ConversationId');
+            
+            newConversationId = newConversation.ConversationId;
+
+            await trx('ConversationUser').insert([
+                {
+                    UserId: userId1,
+                    ConversationId: newConversationId,
+                    EncryptedConversationKey: encryptedConversationKeyUser1,
+                },
+                {
+                    UserId: userId2,
+                    ConversationId: newConversationId,
+                    EncryptedConversationKey: encryptedConversationKeyUser2,
+                }
+            ]);
+        });
+
+        return newConversationId;
+
+    } 
+    catch (error) 
+    {
+        console.error('Błąd podczas tworzenia konwersacji:', error);
+        return false; 
+    }
+}
+
 
 module.exports = 
 {
     createUser,
     addMessageToConversation,
-    loginUser
+    loginUser,
+    createConversation
 };

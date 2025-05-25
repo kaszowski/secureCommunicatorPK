@@ -11,7 +11,7 @@ router.get('/keys', async (req, res) => {
     } 
     catch (err) 
     {
-        console.error("Error fetching conversations:", err);
+        console.error("Error fetching keys", err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

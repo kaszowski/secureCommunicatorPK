@@ -185,6 +185,10 @@ app.use(loginRoute)
 const registerRoute = require('./unprotected/register')
 app.use(registerRoute)
 
+const getPublicKey = require('./unprotected/getPublicKey')
+app.use(getPublicKey)
+
+
 const conversationsRoute = require('./protected/conversations')
 app.use(tokenMiddleware, conversationsRoute)
 
@@ -194,14 +198,17 @@ app.use(tokenMiddleware, messagesRoute)
 const keysRoutes = require('./protected/keys')
 app.use(tokenMiddleware, keysRoutes)
 
-const changePasswdRoutes = require('./protected/changePasswd')
-app.use(tokenMiddleware, changePasswdRoutes)
+const updateUser = require('./protected/updateUser')
+app.use(tokenMiddleware, updateUser)
 
 const refreshTokenRoutes = require('./protected/refreshToken')
 app.use(tokenMiddleware, refreshTokenRoutes)
 
 const logoutRoutes = require('./protected/logout')
 app.use(tokenMiddleware, logoutRoutes)
+
+const createConversationRoute = require('./protected/createConversation')
+app.use(tokenMiddleware, createConversationRoute)
 
 // Funkcja do sprawdzenia połączenia z bazą danych
 async function checkDbConnection() 

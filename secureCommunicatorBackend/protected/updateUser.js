@@ -4,14 +4,11 @@ const express = require('express');
 const router = express.Router();
 
 
-router.post('/passwd/change', async (req, res) => {
+router.post('/update', async (req, res) => {
     try {
-        const {currentPassword, newPassword} = req.body
-        if(!currentPassword || !newPassword)
-        {
-            return res.status(400).json({ error: 'Missing fields' });
-        }
-        const changed = await userQueries.UPDATE.changePassword(req.userId, currentPassword, newPassword, req.newPrivateKey??null)
+        const {updates} = req.body
+        if(!updates) res.status(400).json({ error: 'Empty' });
+       const changed = await userQueries.UPDATE.updateUser(req.userId, updates)
         res.json({ success: changed});
     } 
     catch (err) 

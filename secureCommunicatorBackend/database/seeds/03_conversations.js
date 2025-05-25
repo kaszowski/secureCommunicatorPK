@@ -35,8 +35,8 @@ exports.seed = async function(knex)
   }
 
   await knex('ConversationUser').insert([
-    { UserId: bobMarley.UserId, ConversationId: conversationId, Attributes: null },
-    { UserId: aliceJenson.UserId, ConversationId: conversationId, Attributes: null },
+    { UserId: bobMarley.UserId, ConversationId: conversationId, Attributes: null, EncryptedConversationKey: "KEY_123" },
+    { UserId: aliceJenson.UserId, ConversationId: conversationId, Attributes: null, EncryptedConversationKey: "KEY_123" },
   ]);
 
   await knex('Message').insert([

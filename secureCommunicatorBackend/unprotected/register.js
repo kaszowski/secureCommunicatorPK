@@ -24,11 +24,15 @@ router.post('/register', async (req, res) => {
           return res.status(400).json({ error: 'Username must be 3-32 characters' });
         }
 
-        /*const exists = await userQueries.checkEmailExists(email)
-        if(exists) {
+        const emailExists = await userQueries.GET.checkEmailExists(email)
+        if(emailExists) {
             return res.status(400).json({ error: 'Email already exists' });
-        }*/
+        }
 
+        const loginExists = await userQueries.GET.findUserByUsername(username)
+        if(loginExists) {
+            return res.status(400).json({ error: 'Login already exists' });
+        }
         //newUser = await userQueries.POST.createUser({username: username, password_hash: password_hash, email: email, public_key: public_key, private_key: private_key??null})
         newUser = await userQueries.POST.createUser(username, password_hash, email, public_key, private_key??null)
         return res.status(201).json({ message: 'Registration successful' });
