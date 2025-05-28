@@ -9,6 +9,7 @@ import {
   Box,
   Stack
 } from '@mui/material';
+import { p } from 'node_modules/@react-router/dev/dist/routes-DHIOx0R9';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -24,7 +25,7 @@ export default function LoginPage() {
     password: ''
   });
 
-  const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (field: keyof typeof formData) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [field]: event.target.value
@@ -33,7 +34,7 @@ export default function LoginPage() {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    console.log('Login attempt:', formData);
+    console.log('Login attempt:', {...formData, password: '******'});
     // TODO: Implement actual login logic
   };
 

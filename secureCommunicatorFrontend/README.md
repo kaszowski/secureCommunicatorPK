@@ -75,16 +75,6 @@ Run all tests:
 npm test
 ```
 
-Run tests in watch mode:
-```bash
-npm run test:watch
-```
-
-Run tests with coverage:
-```bash
-npm run test:coverage
-```
-
 Run specific test file:
 ```bash
 npm test Button.test.tsx
@@ -132,10 +122,7 @@ docker run -p 3000:3000 secure-communicator-frontend
 | `npm run dev` | Start development server with HMR |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build locally |
-| `npm test` | Run all tests |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint |
-| `npm run type-check` | Run TypeScript type checking |
+| `npm run test` | Run all tests |
 
 ## 🎨 Styling & UI
 

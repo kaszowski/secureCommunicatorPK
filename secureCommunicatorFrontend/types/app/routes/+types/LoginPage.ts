@@ -11,7 +11,7 @@ export type Info = {
   parents: [Parent0];
   id: 'routes/LoginPage';
   file: 'routes/LoginPage.tsx';
-  path: 'undefined';
+  path: undefined;
   params: {} & { [key: string]: string | undefined };
   module: Module;
   loaderData: T.CreateLoaderData<Module>;

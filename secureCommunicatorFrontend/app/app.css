@@ -2,6 +2,6 @@ body {
   background-color: #81a9ff;
 }
 
-* {
+body, p, h1, h2, h3, h4, h5, h6, span {
   color: #ffffff;
 }
