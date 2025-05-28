@@ -1,9 +1,9 @@
 import React from 'react';
-import { useState } from 'react';
 import { TextField } from '@mui/material';
+import type { TextFieldProps } from '@mui/material';
 
 interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  extends Omit<TextFieldProps, 'variant' | 'size' | 'color'> {
   children?: React.ReactNode;
   id: string;
   variant?: 'filled' | 'outlined' | 'standard';
@@ -23,12 +23,13 @@ const Input: React.FC<InputProps> = ({
 }) => {
   return (
     <TextField
+      id={id}
       variant={variant}
       label={children}
       size={size}
       color={color}
-      onChange={onChange}
       {...props}
+      onChange={onChange}
     />
   );
 };

@@ -37,4 +37,36 @@ describe('Button test', () => {
     // Check the type attribute by reading it directly
     expect(buttonElement.getAttribute('type')).toBe('submit');
   });
+
+  test('renders with different Material UI variants correctly', () => {
+    const { rerender } = render(<Button variant="contained">Contained Button</Button>);
+    let buttonElement = screen.getByRole('button', { name: /contained button/i });
+    expect(buttonElement.className).toContain('MuiButton-contained');
+
+    rerender(<Button variant="outlined">Outlined Button</Button>);
+    buttonElement = screen.getByRole('button', { name: /outlined button/i });
+    expect(buttonElement.className).toContain('MuiButton-outlined');
+
+    rerender(<Button variant="text">Text Button</Button>);
+    buttonElement = screen.getByRole('button', { name: /text button/i });
+    expect(buttonElement.className).toContain('MuiButton-text');
+  });
+
+  test('applies correct color classes and handles custom sx props', () => {
+    const { rerender } = render(
+      <Button color="secondary" sx={{ marginTop: 2 }}>
+        Secondary Button
+      </Button>
+    );
+    let buttonElement = screen.getByRole('button', { name: /secondary button/i });
+    expect(buttonElement.className).toContain('MuiButton-colorSecondary');
+
+    rerender(<Button color="error">Error Button</Button>);
+    buttonElement = screen.getByRole('button', { name: /error button/i });
+    expect(buttonElement.className).toContain('MuiButton-colorError');
+
+    rerender(<Button color="success">Success Button</Button>);
+    buttonElement = screen.getByRole('button', { name: /success button/i });
+    expect(buttonElement.className).toContain('MuiButton-colorSuccess');
+  });
 });
