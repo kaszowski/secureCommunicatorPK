@@ -129,9 +129,11 @@ io.on('connection', async (socket) => {
         }
         socket.exp = data.exp
         socket.userId = data.userId
-        const conversationIds = await getUserConversations(data.userId);
+        const conversationIds = await userQueries.GET.getUserConversations(data.userId);
+        console.log(conversationIds)
+        //conversationsData.some(obj => obj.ConversationId==conversationId)
         conversationIds.forEach(element => {
-            socket.join(element.id.toString()); // Upewnij się, że ID jest stringiem
+            socket.join(element.ConversationId.toString()); // Upewnij się, że ID jest stringiem
         });
         console.log(`User ${socket.userId} connected. Rooms:`, socket.rooms);
     }
@@ -142,8 +144,10 @@ io.on('connection', async (socket) => {
         socket.disconnect(true);
     }
     socket.on('message', async (msg) => {
-        console.log('Received message:', msg);
+        try {
         const { conversationId, content } = msg;
+        console.log('Received message:', conversationId, content);
+
         if (!conversationId) {
             return socket.emit('error', "no conversationId")
         }
@@ -152,7 +156,7 @@ io.on('connection', async (socket) => {
             return socket.emit('error', "empty message")
         }
 
-        if (!!conversationsData.some(obj => obj.ConversationId==conversationId.toString())) { // Upewnij się, że ID jest stringiem
+        if (!socket.rooms.has(conversationId.toString())) {
             console.error(`User ${socket.userId} tried to send to invalid room ${conversationId}`);
             return socket.emit('error', "invalid conversationId");
         }
@@ -164,6 +168,11 @@ io.on('connection', async (socket) => {
             message: content,
             conversationId: conversationId
         });
+        }
+        catch(err)
+        {
+            console.log(err)
+        }
     });
 
     socket.on('disconnect', () => {
