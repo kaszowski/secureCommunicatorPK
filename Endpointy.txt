@@ -1,0 +1,61 @@
+Typy danych dla kluczy to BYTEA dla reszty stringi
+/login
+
+Wysłać w body: username i password
+Zwraca czy sukces czy nie. Jeżeli pomyślne zaloguje to dostaje cookie z tokenem(token) i timestamp do kiedy jest ważny(token_expiry)
+
+/register
+Wysłać w body: email, username, password_hash(ma być hash zrobiony po stronie klienta), public_key, private_key(opcjonalnie i zaszyfrowany hasłem)
+Zwraca czy sukces lub błąd(jaka reguła złamana)
+
+/key/public
+Wysyłać w body: username(tego użytkownika którego chcemy dostać klucz)
+Zwraca klucz publiczny użytkownika o podanym loginie
+
+/keys
+Wysłać z "credentials: include"
+Zwraca klucze prywatny i publiczny użytkownika do którego należy token
+
+/logout
+Wysłać z "credentials: include"
+Unieważnia token
+
+/refresh/token
+Wysłać z "credentials: include"
+Unieważnia token i daje nowy
+
+/conversations
+Wysłać z "credentials: include"
+Zwraca tablice z konwersacjami użytkownika
+
+/messages
+Wysłać z "credentials: include"
+W body: conversationId, limit(ile wiadomości wysłać), offset(ile wiadomości od począku pominąć)
+Zwraca tablice z wiadomościami
+
+/conversation/create
+Wysłać z "credentials: include"
+W body: userToAdd (login osoby którą chcemy dodać), keyMine(zaszyfrowany klucz symetryczny osoby która zaczyna chat), keyOther(zaszyfrowany klucz symetryczny drugiej osoby)
+Jeszcze nie działa do końca
+
+/update
+Wysłać z "credentials: include"
+W body: obiekt updates - w obiekcie musi być zawarte stare hasło(hash hasła) i nowe wartości które chcemy zmieniać(username, usernameShow, email, newPassword)
+
+
+
+Socket io
+Podłączać się tak
+socket = io('https://localhost:5000', {
+        secure: true,
+        rejectUnauthorized: false,
+        withCredentials: true,
+      });
+Otrzymywanie wiadomosci:
+socket.on('message', (msg) => {
+	/*Funkcja*/
+})
+Wysyłanie wiadomości:
+socket.emit('message', { conversationId, content });
+
+
