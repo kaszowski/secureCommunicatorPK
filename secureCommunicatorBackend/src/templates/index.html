@@ -10,8 +10,8 @@
     localStorage.removeItem("nextRefresh")
     async function login() {
       const username = document.getElementById('username').value;
-      password = "hunter2"
-      const res = await fetch('https://localhost:3000/login', {
+      password = "abcde"
+      const res = await fetch('https://localhost:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({username, password})
@@ -20,7 +20,7 @@
       const data = await res.json();
       scheduleNextRefresh()
 
-      socket = io('https://localhost:3000', {
+      socket = io('https://localhost:5000', {
         secure: true,
         rejectUnauthorized: false,
         withCredentials: true,

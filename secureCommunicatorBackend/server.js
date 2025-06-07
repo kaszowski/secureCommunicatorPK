@@ -9,17 +9,25 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const cookie = require('cookie');
 const LRU = require('lru-cache');
-
+const knexConfig = require('./knexfile').development;
+const knex = require('knex')(knexConfig);
+//const userQueries = require('./knex_db_operations/userQueries');
+//const userQueries = require('./database/queries/index');
+const userQueries = require('./database/queries/index')
+const {blacklist} = require("./shared")
+const crypto = require('crypto');
+const { off } = require('process');
+  
+console.log(userQueries)
 
 const serverOptions = {
     key: fs.readFileSync('certs/key.pem'),
     cert: fs.readFileSync('certs/cert.pem')
 };
-
-const blacklist = new LRU.LRUCache({
+/*const blacklist = new LRU.LRUCache({
     max: 10000,
-    ttl: 1000 * 60 * 15, //<-ile milisekund do usunięcia
-  });
+    ttl: 1000 * 60 * 15,
+  });*/
 
 const app = express();
 
@@ -44,35 +52,69 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
-const USER = {
-    username: 'john',
-    password: 'hunter2', // in real life this should be hashed
-    id: 1,
-    role: 'admin'
-};
+const HTTPS_PORT = 5000;
 
-const conversations = [
-    [{id: 0, user1: 0, user2: 1}],
-    [{id: 0, user1: 1, user2: 0}]
-]
-
-function getUserConversations(userId)
-{
-    return conversations[userId]
-}
-
-// Create HTTPS server
 const httpsServer = https.createServer(serverOptions, app);
 
 const io = new Server(httpsServer, {
     cors: {
-      origin: 'https://localhost:3000',   // frontend origin
+      origin: `https://localhost:${HTTPS_PORT}`,
       methods: ['GET', 'POST'],
       credentials: true
     }
 });
 
-io.on('connection', (socket) => {
+async function getUserConversations(userId)
+{
+    return await userQueries.GET.getUserConversations(userId); 
+}
+
+function getTokenFromRequest(req)
+{
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.slice(7);
+    }
+
+    if (req.cookies && req.cookies.token) {
+        return req.cookies.token;
+    }
+    return null
+}
+
+function verifyTokenFromRequest(req) {
+    const token = getTokenFromRequest(req);
+    if (!token) {
+      throw new Error('Token not found');
+    }
+  
+    try {
+      const payload = jwt.verify(token, SECRET_KEY);
+      if(blacklist.has(token)) throw new Error('Invalid or expired token');
+      return payload;
+    } catch (err) {
+      throw new Error('Invalid or expired token');
+    }
+}
+
+function tokenMiddleware(req, res, next)
+{
+    try {
+        const payload = verifyTokenFromRequest(req);
+
+        if (!payload) {
+            return res.status(401).json({ error: 'Invalid or missing token' });
+        }
+
+        req.userId = payload.userId;
+        next();
+    } catch (err) {
+        console.error('Auth error:', err);
+        res.status(401).json({ error: 'Unauthorized' });
+    }
+}
+
+io.on('connection', async (socket) => {
     console.log('A client connected via HTTPS');
     const authCookies = socket.handshake.headers.cookie
     try
@@ -82,40 +124,59 @@ io.on('connection', (socket) => {
         if(blacklist.has(token))
         {
             socket.emit("error", "Invalid token");
-            socket.disconnect(true)
+            socket.disconnect(true);
+            return;
         }
         socket.exp = data.exp
-        socket.id = data.userId
-        conversationIds = getUserConversations(data.userId)
+        socket.userId = data.userId
+        const conversationIds = await userQueries.GET.getUserConversations(data.userId);
+        console.log(conversationIds)
+        //conversationsData.some(obj => obj.ConversationId==conversationId)
         conversationIds.forEach(element => {
-            socket.join(element.id)
+            socket.join(element.ConversationId.toString()); // Upewnij się, że ID jest stringiem
         });
-        console.log(socket.rooms)
+        console.log(`User ${socket.userId} connected. Rooms:`, socket.rooms);
     }
     catch(err)
     {
+        console.error("Auth error:", err.message);
         socket.emit("error", "Invalid token");
-        socket.disconnect(true)
+        socket.disconnect(true);
     }
-    socket.on('message', (msg) => {
-        console.log('Received message:', msg);
+    socket.on('message', async (msg) => {
+        try {
         const { conversationId, content } = msg;
+        console.log('Received message:', conversationId, content);
+
         if (!conversationId) {
             return socket.emit('error', "no conversationId")
         }
-    
+
         if (!content) {
             return socket.emit('error', "empty message")
         }
 
-        if (!socket.rooms.has(parseInt(conversationId))) {
+        if (!socket.rooms.has(conversationId.toString())) {
+            console.error(`User ${socket.userId} tried to send to invalid room ${conversationId}`);
             return socket.emit('error', "invalid conversationId");
         }
-        socket.to(conversationId).emit('message', {
-            sender: socket.id,
+
+        await userQueries.POST.addMessageToConversation(conversationId, socket.userId, content)
+
+        socket.to(conversationId.toString()).emit('message', {
+            sender: socket.userId,
             message: content,
+            conversationId: conversationId
         });
-        //socket.broadcast.emit('message', msg);
+        }
+        catch(err)
+        {
+            console.log(err)
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`User ${socket.userId} disconnected`);
     });
   });
 
@@ -127,95 +188,81 @@ app.get('/main', (req, res) => {
     res.sendFile(path.join(__dirname, 'src/templates', 'index.html'));
 });
 
-// Login route
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    console.log(username, password)
-    if (username === USER.username && password === USER.password) {
-      const token = jwt.sign(
-        { userId: USER.id, username: USER.username},
-        SECRET_KEY,
-        { expiresIn: `${tokenLifeInMinutes}m` }
-      );
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Strict'
-        });
-      const expiresAt = Date.now() + tokenLifeInMinutes * 60 * 1000;
-      res.cookie("token_expiry", expiresAt-15*1000, {
-            httpOnly: false,
-            secure: true,
-            sameSite: 'None'
-        })
-      return res.json({ success: true });
+const loginRoute = require('./unprotected/login')
+app.use(loginRoute)
+
+const registerRoute = require('./unprotected/register')
+app.use(registerRoute)
+
+const getPublicKey = require('./unprotected/getPublicKey')
+app.use(getPublicKey)
+
+
+const conversationsRoute = require('./protected/conversations')
+app.use(tokenMiddleware, conversationsRoute)
+
+const messagesRoute = require('./protected/messages')
+app.use(tokenMiddleware, messagesRoute)
+
+const keysRoutes = require('./protected/keys')
+app.use(tokenMiddleware, keysRoutes)
+
+const updateUser = require('./protected/updateUser')
+app.use(tokenMiddleware, updateUser)
+
+const refreshTokenRoutes = require('./protected/refreshToken')
+app.use(tokenMiddleware, refreshTokenRoutes)
+
+const logoutRoutes = require('./protected/logout')
+app.use(tokenMiddleware, logoutRoutes)
+
+const createConversationRoute = require('./protected/createConversation')
+app.use(tokenMiddleware, createConversationRoute)
+
+// Funkcja do sprawdzenia połączenia z bazą danych
+async function checkDbConnection() 
+{
+    try 
+    {
+        await knex.raw('select 1+1 as result');
+        console.log('Database connection successful.');
+        return true;
+    } 
+    catch (err) 
+    {
+        console.error('Database connection failed:', err);
+        return false;
     }
-    res.status(401).json({ error: 'Invalid credentials' });
-});
+}
 
-app.get('/conversations', (req, res) => {
-    try {
-        token = req.cookies.token
-        const payload = jwt.verify(token, SECRET_KEY);
-        res.json({conversations: getUserConversations(payload.userId)})
-    } catch (err) {
-        res.status(401).json({ error: 'Invalid or expired token' });
+// Najpierw sprawdź połączenie z DB, potem uruchom serwer
+checkDbConnection().then(isConnected => 
+    {
+    if (!isConnected) 
+        {
+        console.error("Exiting due to database connection failure.");
+        process.exit(1); // Zakończ proces, jeśli nie można połączyć się z bazą
     }
-});
 
-app.get('/refresh/token', (req, res) => {
-    try {
-        const oldToken = req.cookies.token
-        if(blacklist.has(oldToken)) return res.status(401).json({ error: 'Invalid or expired token' });
-        const payload = jwt.verify(oldToken, SECRET_KEY);
-        const newToken = jwt.sign(
-            { userId: payload.userId, username: payload.username},
-            SECRET_KEY,
-            { expiresIn: `${tokenLifeInMinutes}m` }
-        );
-        res.cookie('token', newToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'Strict'
-        });
-        const expiresAt = Date.now() + tokenLifeInMinutes * 60 * 1000;
-        res.cookie("token_expiry", expiresAt-15*1000, {
-            httpOnly: false,
-            secure: true,
-            sameSite: 'None'
-        })
-        blacklist.set(oldToken, true)
-        return res.json({ success: true });
-    } catch (err) {
-        res.status(401).json({ error: 'Invalid or expired token' });
-    }
-});
+    httpsServer.listen(HTTPS_PORT, () => 
+        {
+        console.log(`Secure WebSocket server running on https://localhost:${HTTPS_PORT}`);
+    });
 
-app.get('/logout', (req, res) => {
-    try {
-        const oldToken = req.cookies.token
-        const payload = jwt.verify(oldToken, SECRET_KEY);
-        blacklist.set(oldToken, true)
-        res.json({success: true})
-    } catch (err) {
-        res.status(401).json({ error: 'Invalid or expired token' });
-    }
-})
+    // Create an HTTP server to redirect traffic to HTTPS
+    const httpApp = express();
 
-// Start HTTPS Server
-const HTTPS_PORT = 3000;
-httpsServer.listen(HTTPS_PORT, () => {
-    console.log(`Secure WebSocket server running on https://localhost:${HTTPS_PORT}`);
-});
+    httpApp.use((req, res) => {
+        res.redirect(`https://${req.headers.host}${req.url}`);
+    });
 
-// Create an HTTP server to redirect traffic to HTTPS
-const httpApp = express();
+    const HTTP_PORT = 80; // Może wymagać uprawnień administratora
+    http.createServer(httpApp).listen(HTTP_PORT, () => {
+        console.log(`HTTP redirector running on http://localhost:${HTTP_PORT}`);
+    });
 
-httpApp.use((req, res) => {
-    res.redirect(`https://${req.headers.host}${req.url}`);
-});
-
-const HTTP_PORT = 80; // You need root/admin privileges for port 80
-http.createServer(httpApp).listen(HTTP_PORT, () => {
-    console.log(`HTTP redirector running on http://localhost:${HTTP_PORT}`);
+}).catch(err => {
+    // Ten catch jest na wszelki wypadek, główna obsługa błędu jest w checkDbConnection
+    console.error("Failed to initialize server:", err);
+    process.exit(1);
 });
