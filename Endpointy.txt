@@ -57,5 +57,3 @@ socket.on('message', (msg) => {
 })
 Wysyłanie wiadomości:
 socket.emit('message', { conversationId, content });
-
-

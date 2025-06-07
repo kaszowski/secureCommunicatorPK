@@ -30,6 +30,7 @@ This API provides endpoints for a secure messaging system with encrypted key exc
 Authenticate a user.
 
 **Request Body:**
+
 ```json
 {
   "username": "string",
@@ -38,6 +39,7 @@ Authenticate a user.
 ```
 
 **Response:**
+
 - Success or failure message.
 - If successful, sets cookies:
   - `token`: Session token(HTTP-only)
@@ -50,6 +52,7 @@ Authenticate a user.
 Register a new user.
 
 **Request Body:**
+
 ```json
 {
   "email": "string",
@@ -61,6 +64,7 @@ Register a new user.
 ```
 
 **Response:**
+
 - Success message or validation error
 
 ---
@@ -82,10 +86,12 @@ Invalidates the current token and returns a new one.
 Include credentials via `credentials: include`
 
 **Response:**
+
 - Success or failure message.
 - If successful, sets cookies:
   - `token`: Session token(HTTP-only)
   - `token_expiry`: Token expiration timestamp
+
 ---
 
 ## 🔑 Key Management
@@ -95,6 +101,7 @@ Include credentials via `credentials: include`
 Fetch a public key of another user.
 
 **Request Body:**
+
 ```json
 {
   "username": "string"
@@ -102,6 +109,7 @@ Fetch a public key of another user.
 ```
 
 **Response:**
+
 - Public key of the requested user
 
 ---
@@ -125,18 +133,20 @@ Returns a list of all conversations of the logged-in user.
 Include credentials via `credentials: include`
 
 **Response:**
+
 ```json
 {
-    "conversations": [
-        {
-            "ConversationId": "string",
-            "Name": "string",
-            "Avatar": null,
-            "Background": null
-        }
-    ]
+  "conversations": [
+    {
+      "ConversationId": "string",
+      "Name": "string",
+      "Avatar": null,
+      "Background": null
+    }
+  ]
 }
 ```
+
 ---
 
 ### **GET** `/messages`
@@ -144,6 +154,7 @@ Include credentials via `credentials: include`
 Fetch messages from a conversation.
 
 **Request Body:**
+
 ```json
 {
   "conversationId": "string",
@@ -153,18 +164,20 @@ Fetch messages from a conversation.
 ```
 
 **Response:**
+
 - Array of messages
+
 ```json
 {
-    "messages": [
-        {
-            "MessageId": "string",
-            "UserId": "string",
-            "ConversationId": "string",
-            "Content": "string",
-            "SendAt": "string"
-        },
-    ]
+  "messages": [
+    {
+      "MessageId": "string",
+      "UserId": "string",
+      "ConversationId": "string",
+      "Content": "string",
+      "SendAt": "string"
+    }
+  ]
 }
 ```
 
@@ -178,6 +191,7 @@ Include credentials via `credentials: include`
 Creates a new conversation with another user.
 
 **Request Body:**
+
 ```json
 {
   "userToAdd": "string",
@@ -201,6 +215,7 @@ Include credentials via `credentials: include`
 Update account details.
 
 **Request Body:**
+
 ```json
 {
   "updates": {
@@ -221,8 +236,9 @@ Include credentials via `credentials: include`
 ## 📡 Real-Time Communication (Socket.io)
 
 Connect using:
+
 ```js
-const socket = io('https://localhost:5000', {
+const socket = io("https://localhost:5000", {
   secure: true,
   rejectUnauthorized: false,
   withCredentials: true,
@@ -230,17 +246,19 @@ const socket = io('https://localhost:5000', {
 ```
 
 ### Receiving Messages:
+
 ```js
-socket.on('message', (msg) => {
+socket.on("message", (msg) => {
   // Handle incoming message
 });
 ```
 
 ### Sending Messages:
+
 ```js
-socket.emit('message', {
+socket.emit("message", {
   conversationId: "string",
-  content: "string"
+  content: "string",
 });
 ```
 
