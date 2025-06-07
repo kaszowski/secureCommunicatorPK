@@ -1,11 +1,24 @@
 services:
-  backend:
-    build: ./backend
-    container_name: backend
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
     ports:
-      - "5000:5000"
+      - "80:80"
     volumes:
-      - ./backend:/app
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  backend:
+    build: ./secureCommunicatorBackend
+    container_name: backend
+    # Remove port exposure since nginx will handle routing
+    expose:
+      - "5000"
+    volumes:
+      - ./secureCommunicatorBackend:/app
       - /app/node_modules
     command: >
       sh -c "npm install &&
@@ -22,14 +35,14 @@ services:
       - NODE_ENV=development
 
   frontend:
-    build: ./frontend
+    build: ./secureCommunicatorFrontend
     container_name: frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "5173"
     volumes:
-      - ./frontend:/app
+      - ./secureCommunicatorFrontend:/app
       - /app/node_modules
-    command: npm start
+    command: npm run dev
 
   db:
     image: postgres:16
@@ -41,8 +54,8 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
     volumes:
-      - ./db:/var/lib/postgresql/data
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
       interval: 10s
@@ -51,4 +64,3 @@ services:
 
 volumes:
   db-data:
-
