@@ -108,13 +108,18 @@ async function getUserById(userId)
  * @param {string} userId - ID użytkownika.
  * @returns {Promise<Array<object>>} Lista konwersacji.
  */
+/**
+ * Pobiera wszystkie konwersacje dla danego użytkownika.
+ * @param {string} userId - ID użytkownika.
+ * @returns {Promise<Array<object>>} Lista konwersacji.
+ */
 async function getUserConversations(userId) 
 {    try 
     {
         const conversations = await knex('ConversationUser')
             .join('Conversation', 'ConversationUser.ConversationId', 'Conversation.ConversationId')
             .where('ConversationUser.UserId', userId)
-            .select('Conversation.ConversationId', 'Conversation.Name', 'Conversation.Avatar', 'Conversation.Background');
+            .select('Conversation.ConversationId', 'Conversation.Name', 'Conversation.Avatar', 'Conversation.Background', 'ConversationUser.EncryptedConversationKey');
         return conversations;
     } 
     catch (error) 
