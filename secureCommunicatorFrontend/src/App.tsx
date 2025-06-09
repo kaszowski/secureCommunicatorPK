@@ -116,7 +116,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
+      <Router basename='/sc'>
         <Routes>
           {/* Default route - redirect based on auth status */}
           <Route

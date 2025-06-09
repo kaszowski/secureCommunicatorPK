@@ -84,9 +84,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
   const initializeSocket = () => {
     const newSocket = io(
-      process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001',
+      '/', // Use nginx proxy - no need for specific URL
       {
         withCredentials: true,
+        path: '/socket.io/',
       }
     );
 

@@ -52,7 +52,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const fetchConversations = async () => {
     try {
       const response = await api.get('/conversations');
-      setConversations(response.data.conversations || []);
+      const rawConversations = response.data.conversations || [];
+
+      // Map backend data structure to frontend structure
+      const mappedConversations = rawConversations.map((conv: any) => ({
+        id: conv.ConversationId,
+        name: conv.Name || 'Unnamed Conversation',
+        participants: [], // Will be populated separately if needed
+        lastMessage: conv.lastMessage,
+        lastMessageTime: conv.lastMessageTime,
+        unreadCount: conv.unreadCount || 0,
+      }));
+
+      setConversations(mappedConversations);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
     } finally {
@@ -62,10 +74,11 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   const filteredConversations = conversations.filter(
     (conversation) =>
-      conversation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conversation.participants.some((participant) =>
-        participant.username.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      conversation.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conversation.participants &&
+        conversation.participants.some((participant) =>
+          participant.username?.toLowerCase().includes(searchTerm.toLowerCase())
+        ))
   );
 
   const formatLastMessageTime = (timestamp?: string) => {

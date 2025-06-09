@@ -20,11 +20,37 @@ This setup uses Nginx as a reverse proxy to eliminate CORS issues between your R
 
 When running the setup:
 
-- **Frontend**: `http://localhost/` (serves React app)
+- **Frontend**: `http://localhost/sc/` (serves React app with /sc prefix)
+- **Backend root**: `http://localhost/` (serves backend templates)
 - **Backend API**: `http://localhost/api/*` (proxied to backend)
 - **Socket.IO**: `http://localhost/socket.io/*` (proxied to backend)
 - **Auth endpoints**: `http://localhost/login`, `http://localhost/register`, etc.
 - **Protected endpoints**: `http://localhost/conversations`, `http://localhost/messages`, etc.
+
+## Route Separation
+
+To avoid conflicts between frontend and backend routes, the frontend is served under the `/sc/` prefix:
+
+**Frontend Routes (React Router):**
+
+- `http://localhost/sc/` - main app (redirects to login or chat based on auth status)
+- `http://localhost/sc/login` - login page
+- `http://localhost/sc/chat` - chat interface
+
+**Backend Routes:**
+
+- `http://localhost/` - backend root (serves backend templates)
+- `http://localhost/login`, `/register`, `/logout` - authentication endpoints
+- `http://localhost/conversations`, `/messages`, `/keys` - protected API endpoints
+- `http://localhost/socket.io/*` - WebSocket connections
+- `http://localhost/api/*` - API endpoints (if using /api prefix)
+
+This separation ensures that:
+
+1. No route conflicts between frontend and backend
+2. Backend API endpoints work without interference
+3. Frontend SPA routing works correctly under its prefix
+4. Both services can coexist on the same domain
 
 ## How to Run
 
@@ -54,11 +80,19 @@ The nginx configuration:
 
 ## Frontend Configuration Updates
 
-Your frontend should now make API calls to relative paths:
+Your frontend now uses `/sc/` as the base path to avoid route conflicts:
 
-- Instead of `https://localhost:5000/login` use `/login`
-- Instead of `https://localhost:5000/api/conversations` use `/conversations`
+- All frontend routes are prefixed with `/sc/`
+- React Router uses `basename="/sc"`
+- Vite config includes `base: '/sc/'`
+- API calls remain relative (e.g., `/login`, `/conversations`) - these go to backend
 - Socket.IO connection should use: `io('/', {withCredentials: true})`
+
+**Route Separation:**
+
+- Frontend routes: `/sc/login`, `/sc/chat`, `/sc/`
+- Backend API routes: `/login`, `/register`, `/conversations`, etc.
+- This eliminates conflicts between frontend pages and backend API endpoints
 
 ## Backend Configuration Updates
 

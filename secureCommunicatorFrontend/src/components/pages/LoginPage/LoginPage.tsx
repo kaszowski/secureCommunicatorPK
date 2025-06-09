@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Container,
-  Paper,
-  Typography,
-  Tab,
-  Tabs,
-  Alert,
-  Fade,
-} from '@mui/material';
+import { Box, Paper, Typography, Tab, Tabs, Alert, Fade } from '@mui/material';
 import { Lock, Message } from '@mui/icons-material';
 import { LoginForm, RegisterForm } from '../../molecules';
 import api from '../../../utils/api';
@@ -112,7 +103,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         py: 4,
       }}
     >
-      <Container maxWidth='sm'>
+      <Box sx={{ width: '100%', maxWidth: '500px', mx: 'auto' }}>
         <Fade in timeout={800}>
           <Paper
             elevation={12}
@@ -246,7 +237,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </Box>
           </Paper>
         </Fade>
-      </Container>
+      </Box>
     </Box>
   );
 };
