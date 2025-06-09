@@ -8,7 +8,7 @@ import {
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import { LoginPage } from './components';
+import { LoginPage, ChatPage } from './components';
 import api from './utils/api';
 
 const theme = createTheme({
@@ -60,10 +60,25 @@ function App() {
       const response = await api.get('/keys');
       if (response.data.keys) {
         setIsAuthenticated(true);
-        // Get user info from localStorage or make another API call
-        const userInfo = localStorage.getItem('userInfo');
-        if (userInfo) {
-          setUser(JSON.parse(userInfo));
+        // Get actual user profile information
+        try {
+          const profileResponse = await api.get('/profile');
+          if (profileResponse.data) {
+            const userInfo: User = {
+              userId: profileResponse.data.userId,
+              username: profileResponse.data.username,
+              email: profileResponse.data.email,
+            };
+            setUser(userInfo);
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          }
+        } catch (profileError) {
+          console.error('Error getting user profile:', profileError);
+          // Fallback to localStorage if profile endpoint fails
+          const userInfo = localStorage.getItem('userInfo');
+          if (userInfo) {
+            setUser(JSON.parse(userInfo));
+          }
         }
       }
     } catch (error) {
@@ -84,8 +99,11 @@ function App() {
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (error: any) {
+      // Only log non-401 errors, as 401 is expected when token is already expired
+      if (error?.response?.status !== 401) {
+        console.error('Logout error:', error);
+      }
     } finally {
       setIsAuthenticated(false);
       setUser(null);
@@ -123,6 +141,16 @@ function App() {
             path='/'
             element={
               <Navigate to={isAuthenticated ? '/chat' : '/login'} replace />
+            }
+          />
+
+          {/* Chat route - only accessible when authenticated */}
+          <Route
+            path='/chat'
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <ChatPage user={user!} onLogout={handleLogout} />
+              </ProtectedRoute>
             }
           />
 

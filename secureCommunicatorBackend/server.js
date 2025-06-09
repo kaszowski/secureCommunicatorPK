@@ -62,10 +62,14 @@ const io = new Server(httpsServer, {
       "http://localhost:80",
       "https://localhost",
       "https://localhost:80",
+      "http://localhost:5173", // Vite dev server
+      "https://localhost:5173",
     ],
     methods: ["GET", "POST"],
     credentials: true,
   },
+  allowEIO3: true,
+  transports: ["websocket", "polling"],
 });
 
 async function getUserConversations(userId) {
@@ -118,29 +122,46 @@ function tokenMiddleware(req, res, next) {
 io.on("connection", async (socket) => {
   console.log("A client connected via HTTPS");
   const authCookies = socket.handshake.headers.cookie;
+
   try {
-    token = cookie.parse(authCookies).token;
-    data = jwt.verify(token, SECRET_KEY);
-    if (blacklist.has(token)) {
-      socket.emit("error", "Invalid token");
-      socket.disconnect(true);
-      return;
+    if (!authCookies) {
+      throw new Error("No cookies found");
     }
+
+    const parsedCookies = cookie.parse(authCookies);
+    const token = parsedCookies.token;
+
+    if (!token) {
+      throw new Error("No token found in cookies");
+    }
+
+    const data = jwt.verify(token, SECRET_KEY);
+
+    if (blacklist.has(token)) {
+      throw new Error("Token is blacklisted");
+    }
+
     socket.exp = data.exp;
     socket.userId = data.userId;
+
     const conversationIds = await userQueries.GET.getUserConversations(
       data.userId
     );
-    console.log(conversationIds);
-    //conversationsData.some(obj => obj.ConversationId==conversationId)
+    console.log(`User ${socket.userId} conversations:`, conversationIds);
+
     conversationIds.forEach((element) => {
-      socket.join(element.ConversationId.toString()); // Upewnij się, że ID jest stringiem
+      socket.join(element.ConversationId.toString());
     });
-    console.log(`User ${socket.userId} connected. Rooms:`, socket.rooms);
+
+    console.log(
+      `User ${socket.userId} connected. Rooms:`,
+      Array.from(socket.rooms)
+    );
   } catch (err) {
-    console.error("Auth error:", err.message);
-    socket.emit("error", "Invalid token");
+    console.error("Socket auth error:", err.message);
+    socket.emit("error", "Authentication failed: " + err.message);
     socket.disconnect(true);
+    return;
   }
   socket.on("message", async (msg) => {
     try {
@@ -200,6 +221,9 @@ app.use(registerRoute);
 const getPublicKey = require("./unprotected/getPublicKey");
 app.use(getPublicKey);
 
+const logoutRoutes = require("./protected/logout");
+app.use(logoutRoutes);
+
 const conversationsRoute = require("./protected/conversations");
 app.use(tokenMiddleware, conversationsRoute);
 
@@ -209,14 +233,14 @@ app.use(tokenMiddleware, messagesRoute);
 const keysRoutes = require("./protected/keys");
 app.use(tokenMiddleware, keysRoutes);
 
+const profileRoute = require("./protected/profile");
+app.use(tokenMiddleware, profileRoute);
+
 const updateUser = require("./protected/updateUser");
 app.use(tokenMiddleware, updateUser);
 
 const refreshTokenRoutes = require("./protected/refreshToken");
 app.use(tokenMiddleware, refreshTokenRoutes);
-
-const logoutRoutes = require("./protected/logout");
-app.use(tokenMiddleware, logoutRoutes);
 
 const createConversationRoute = require("./protected/createConversation");
 app.use(tokenMiddleware, createConversationRoute);

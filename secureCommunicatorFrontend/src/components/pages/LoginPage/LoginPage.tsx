@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
 import { Box, Paper, Typography, Tab, Tabs, Alert, Fade } from '@mui/material';
 import { Lock, Message } from '@mui/icons-material';
-import { LoginForm, RegisterForm } from '../../molecules';
+import {
+  LoginForm,
+  RegisterForm,
+  type KeyStorageOption,
+} from '../../molecules';
 import api from '../../../utils/api';
+import {
+  hashPassword,
+  generateKeyPair,
+  encryptPrivateKey,
+  downloadPrivateKey,
+} from '../../../utils/crypto';
 
 interface User {
   userId: string;
@@ -29,37 +39,57 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     try {
       setError(null);
 
+      // Hash password on client-side before sending to backend
+      const hashedPassword = hashPassword(password);
+
       const response = await api.post('/login', {
         username,
-        password,
+        password: hashedPassword,
       });
 
       if (response.data.success) {
-        // Store the user info and call the parent callback
-        const userInfo: User = {
-          userId: response.data.userId,
-          username: response.data.username,
-          email: response.data.email,
-        };
+        // Store password temporarily in session storage for private key decryption
+        // This is needed to decrypt the private key that's encrypted with the user's password
+        sessionStorage.setItem(
+          'userData',
+          JSON.stringify({
+            username: username,
+            password: password, // Store the original password for key decryption
+          })
+        );
 
-        onLogin(userInfo);
+        // Get actual user info from profile endpoint
+        try {
+          const profileResponse = await api.get('/profile');
+          if (profileResponse.data) {
+            const userInfo: User = {
+              userId: profileResponse.data.userId,
+              username: profileResponse.data.username,
+              email: profileResponse.data.email,
+            };
+            onLogin(userInfo);
+          }
+        } catch (profileError) {
+          console.error('Error getting user profile:', profileError);
+          setError('Login successful but failed to get user information');
+        }
       } else {
         setError(response.data.message || 'Login failed');
       }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(
-        error.response?.data?.message ||
+        error.response?.data?.error ||
           'Login failed. Please check your credentials.'
       );
     }
   };
-
   const handleRegister = async (data: {
     username: string;
     email: string;
     password: string;
     confirmPassword: string;
+    keyStorageOption: KeyStorageOption;
   }) => {
     try {
       setError(null);
@@ -69,25 +99,55 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         return;
       }
 
+      // Hash password on client-side before sending to backend
+      const hashedPassword = hashPassword(data.password);
+
+      // Generate proper cryptographic keys for the user
+      const keyPair = await generateKeyPair();
+
+      let privateKeyToStore: string | null = null;
+
+      // Handle private key storage based on user choice
+      if (data.keyStorageOption === 'database') {
+        // Encrypt private key with user's password for database storage
+        privateKeyToStore = encryptPrivateKey(
+          keyPair.privateKey,
+          data.password
+        );
+      } else {
+        // User will manage the private key themselves
+        privateKeyToStore = null;
+      }
+
+      // Backend expects specific field names
       const response = await api.post('/register', {
         username: data.username,
         email: data.email,
-        password: data.password,
+        password_hash: hashedPassword, // Now properly hashed on client-side
+        public_key: keyPair.publicKey, // Generate proper public key
+        private_key: privateKeyToStore, // Either encrypted or null
       });
 
-      if (response.data.success) {
-        setSuccess(
-          'Registration successful! Please login with your credentials.'
-        );
+      if (response.status === 201) {
+        // If user chose to manage keys themselves, download the private key
+        if (data.keyStorageOption === 'user-managed') {
+          downloadPrivateKey(keyPair.privateKey, data.username);
+          setSuccess(
+            'Registration successful! Your private key has been downloaded. Please keep it safe! You can now login with your credentials.'
+          );
+        } else {
+          setSuccess(
+            'Registration successful! Please login with your credentials.'
+          );
+        }
         setActiveTab(0); // Switch to login tab
       } else {
-        setError(response.data.message || 'Registration failed');
+        setError('Registration failed');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
       setError(
-        error.response?.data?.message ||
-          'Registration failed. Please try again.'
+        error.response?.data?.error || 'Registration failed. Please try again.'
       );
     }
   };

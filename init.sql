@@ -45,7 +45,7 @@ CREATE TABLE "Conversation" (
 CREATE TABLE "ConversationUser" (
     "UserId" UUID NOT NULL,
     "ConversationId" UUID NOT NULL,
-    "EncryptedConversationKey" BYTEA NOT NULL,
+    "EncryptedConversationKey" TEXT NOT NULL,
     "Attributes" SMALLINT,
     PRIMARY KEY ("UserId", "ConversationId"),
     FOREIGN KEY ("UserId") REFERENCES "User"("UserId") ON DELETE CASCADE,
@@ -57,7 +57,7 @@ CREATE TABLE "Message" (
     "MessageId" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "UserId" UUID NULL, -- Zmieniono z NOT NULL na NULL, aby umożliwić SET NULL
     "ConversationId" UUID NOT NULL,
-    "Content" TEXT NOT NULL, -- Podmienić na BYTEA dla zaszyfrowanej treści / obecnie TEXT bo przykładowe dane
+    "Content" BYTEA NOT NULL, -- Zaszyfrowana treść w BYTEA
     "SendAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("UserId") REFERENCES "User"("UserId") ON DELETE SET NULL, -- Zmieniono z ON DELETE CASCADE
     FOREIGN KEY ("ConversationId") REFERENCES "Conversation"("ConversationId") ON DELETE CASCADE
@@ -175,8 +175,8 @@ BEGIN
     -- 3. Dodaj wiadomości do konwersacji
     INSERT INTO "Message" ("MessageId", "UserId", "ConversationId", "Content", "SendAt")
     VALUES
-        (gen_random_uuid(), bob_marley_id, conversation_id, 'Hey Alice!', '2025-04-30T16:00:00Z'),
-        (gen_random_uuid(), alice_jenson_id, conversation_id, 'Hi Bob! How are you?', '2025-04-30T16:01:00Z'),
-        (gen_random_uuid(), bob_marley_id, conversation_id, 'Doing great, thanks! Just testing this chat.', '2025-04-30T16:02:00Z'),
-        (gen_random_uuid(), alice_jenson_id, conversation_id, 'Looks like it works!', '2025-04-30T16:03:00Z');
+        (gen_random_uuid(), bob_marley_id, conversation_id, decode('SGV5IEFsaWNlIQ==', 'base64'), '2025-04-30T16:00:00Z'),
+        (gen_random_uuid(), alice_jenson_id, conversation_id, decode('SGkgQm9iISBIb3cgYXJlIHlvdT8=', 'base64'), '2025-04-30T16:01:00Z'),
+        (gen_random_uuid(), bob_marley_id, conversation_id, decode('RG9pbmcgZ3JlYXQsIHRoYW5rcyEgSnVzdCB0ZXN0aW5nIHRoaXMgY2hhdC4=', 'base64'), '2025-04-30T16:02:00Z'),
+        (gen_random_uuid(), alice_jenson_id, conversation_id, decode('TG9va3MgbGlrZSBpdCB3b3JrcyE=', 'base64'), '2025-04-30T16:03:00Z');
 END $$;

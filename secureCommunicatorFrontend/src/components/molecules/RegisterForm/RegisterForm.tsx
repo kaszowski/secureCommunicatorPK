@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
-import { Box, Typography, IconButton, InputAdornment } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import React, { useState, useMemo } from 'react';
+import {
+  Box,
+  Typography,
+  IconButton,
+  InputAdornment,
+  Alert,
+} from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  CheckCircle,
+  Warning,
+} from '@mui/icons-material';
 import { Input, Button } from '../../atoms';
+import { KeyStorageChoice, type KeyStorageOption } from '../KeyStorageChoice';
+import { validatePasswordStrength } from '../../../utils/crypto';
 
 interface RegisterFormProps {
   onSubmit: (data: {
@@ -9,6 +22,7 @@ interface RegisterFormProps {
     email: string;
     password: string;
     confirmPassword: string;
+    keyStorageOption: KeyStorageOption;
   }) => void;
   loading?: boolean;
   error?: string;
@@ -27,6 +41,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [keyStorageOption, setKeyStorageOption] =
+    useState<KeyStorageOption>('database');
+
+  // Validate password strength in real-time
+  const passwordValidation = useMemo(() => {
+    if (!formData.password) return null;
+    return validatePasswordStrength(formData.password);
+  }, [formData.password]);
 
   const handleChange =
     (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +60,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     if (formData.password !== formData.confirmPassword) {
       return;
     }
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      keyStorageOption,
+    });
   };
 
   const isFormValid = () => {
@@ -47,7 +72,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       formData.email.trim() &&
       formData.password.trim() &&
       formData.confirmPassword.trim() &&
-      formData.password === formData.confirmPassword
+      formData.password === formData.confirmPassword &&
+      (passwordValidation?.isValid ?? false)
     );
   };
 
@@ -108,6 +134,37 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         }}
       />
 
+      {/* Password Strength Indicator */}
+      {formData.password && passwordValidation && (
+        <Box sx={{ mt: 1, mb: 2 }}>
+          <Alert
+            severity={passwordValidation.isValid ? 'success' : 'warning'}
+            icon={passwordValidation.isValid ? <CheckCircle /> : <Warning />}
+            sx={{ mb: 1 }}
+          >
+            <Typography variant='body2'>
+              Password strength: {passwordValidation.score}/5
+              {passwordValidation.isValid ? ' (Strong)' : ' (Weak)'}
+            </Typography>
+          </Alert>
+          {!passwordValidation.isValid &&
+            passwordValidation.feedback.length > 0 && (
+              <Box sx={{ ml: 2 }}>
+                {passwordValidation.feedback.map((feedback, index) => (
+                  <Typography
+                    key={index}
+                    variant='caption'
+                    color='text.secondary'
+                    display='block'
+                  >
+                    • {feedback}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+        </Box>
+      )}
+
       <Input
         label='Confirm Password'
         type={showConfirmPassword ? 'text' : 'password'}
@@ -138,6 +195,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             </InputAdornment>
           ),
         }}
+      />
+
+      {/* Key Storage Option Selection */}
+      <KeyStorageChoice
+        value={keyStorageOption}
+        onChange={setKeyStorageOption}
+        disabled={loading}
       />
 
       <Button
