@@ -922,7 +922,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       {/* Private Key Import Dialog */}
       <PrivateKeyImport
         open={needsPrivateKey}
-        onClose={() => {}} // Don't allow closing without importing key
+        onClose={onLogout} // Log out the user when they cancel the key import
         onImport={handlePrivateKeyImport}
         username={user.username}
       />

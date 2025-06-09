@@ -12,7 +12,7 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { ExpandMore, Upload, Key, Security } from '@mui/icons-material';
+import { ExpandMore, Upload, Key, Security, Logout } from '@mui/icons-material';
 import { Button } from '../../atoms';
 import { validatePemFormat, decryptPrivateKey } from '../../../utils/crypto';
 
@@ -103,6 +103,14 @@ const PrivateKeyImport: React.FC<PrivateKeyImportProps> = ({
             Import your private key to access encrypted messages on this device.
           </Typography>
 
+          <Alert severity='warning' sx={{ mb: 2 }}>
+            <Typography variant='body2'>
+              <strong>Private key required:</strong> You must import your
+              private key to decrypt messages. If you don't have your key file,
+              you can cancel and you will be logged out.
+            </Typography>
+          </Alert>
+
           {username && (
             <Alert severity='info' sx={{ mb: 2 }}>
               Importing private key for user: <strong>{username}</strong>
@@ -176,7 +184,10 @@ const PrivateKeyImport: React.FC<PrivateKeyImportProps> = ({
                   • Never share your private key with anyone
                   <br />
                   • Make sure you trust this device and browser
-                  <br />• The key will be used to decrypt your messages
+                  <br />
+                  • The key will be used to decrypt your messages
+                  <br />• If you don't have your key file, you'll need to
+                  register a new account
                 </Typography>
               </Alert>
             </AccordionDetails>
@@ -185,7 +196,9 @@ const PrivateKeyImport: React.FC<PrivateKeyImportProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleClose} color='warning' startIcon={<Logout />}>
+          Cancel & Logout
+        </Button>
         <Button
           onClick={handleImport}
           variant='contained'
