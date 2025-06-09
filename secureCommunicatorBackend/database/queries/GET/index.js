@@ -197,6 +197,37 @@ async function getMessagesInConversation(
 }
 
 /**
+ * Pobiera dane konwersacji po ID.
+ * @param {string} conversationId - ID konwersacji.
+ * @returns {Promise<object|null>} Obiekt konwersacji lub null.
+ */
+async function getConversationById(conversationId) {
+  try {
+    const conversation = await knex("Conversation")
+      .where({ ConversationId: conversationId })
+      .first();
+
+    if (!conversation) {
+      return null;
+    }
+
+    // Get the encrypted conversation key for all participants
+    const conversationUsers = await knex("ConversationUser")
+      .where({ ConversationId: conversationId })
+      .select("UserId", "EncryptedConversationKey");
+
+    // Include the encrypted key in the response
+    return {
+      ...conversation,
+      Users: conversationUsers,
+    };
+  } catch (error) {
+    console.error("Błąd podczas pobierania konwersacji po ID:", error);
+    throw error;
+  }
+}
+
+/**
  * Sprawdza, czy konwersacja między dwoma użytkownikami już istnieje.
  * @param {string} userId1 - ID pierwszego użytkownika.
  * @param {string} userId2 - ID drugiego użytkownika.
@@ -246,4 +277,5 @@ module.exports = {
   getUserConversations,
   getMessagesInConversation,
   findConversationBetweenUsers,
+  getConversationById,
 };

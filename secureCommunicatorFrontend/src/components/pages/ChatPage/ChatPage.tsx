@@ -190,6 +190,22 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
         // After reconnection, refresh conversation list to ensure socket has latest data
         loadConversations();
+
+        // Rejoin the current conversation if there is one
+        if (selectedConversation) {
+          console.log(
+            'Rejoining conversation after reconnect:',
+            selectedConversation.ConversationId
+          );
+          socketRef.current.emit('join', {
+            conversationId: selectedConversation.ConversationId,
+          });
+        }
+      });
+
+      // Handle successful join acknowledgment
+      socketRef.current.on('joinedConversation', (data) => {
+        console.log('Successfully joined conversation:', data.conversationId);
       });
     };
 
@@ -277,16 +293,29 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
     if (selectedConversation) {
       loadMessages(selectedConversation.ConversationId);
 
-      // Inform socket about the current active conversation
-      if (socketRef.current && socketRef.current.connected) {
-        console.log(
-          'Informing socket about selected conversation:',
-          selectedConversation.ConversationId
-        );
-        socketRef.current.emit('join', {
-          conversationId: selectedConversation.ConversationId,
-        });
-      }
+      // Create a function to join the conversation via socket
+      const joinConversation = () => {
+        if (socketRef.current && socketRef.current.connected) {
+          console.log(
+            'Joining conversation:',
+            selectedConversation.ConversationId
+          );
+          socketRef.current.emit('join', {
+            conversationId: selectedConversation.ConversationId,
+          });
+        } else {
+          console.warn('Socket not connected, will retry joining conversation');
+          // Try to reconnect if not connected
+          if (socketRef.current && !socketRef.current.connected) {
+            socketRef.current.connect();
+          }
+          // Retry after a short delay
+          setTimeout(joinConversation, 1000);
+        }
+      };
+
+      // Execute the join function
+      joinConversation();
     }
   }, [selectedConversation]);
 
@@ -310,14 +339,20 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
     try {
       const response = await api.get('/conversations');
       const loadedConversations = response.data.conversations || [];
+
+      // Update state with loaded conversations
       setConversations(loadedConversations);
 
       // Preload conversation keys for better performance
       if (userPrivateKey && loadedConversations.length > 0) {
         await preloadConversationKeys(loadedConversations);
       }
+
+      // Return the loaded conversations for immediate use
+      return loadedConversations;
     } catch (error) {
       console.error('Error loading conversations:', error);
+      return [];
     }
   };
 
@@ -496,11 +531,48 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
           );
 
           // Load all conversations
-          await loadConversations();
+          const loadedConversations = await loadConversations();
+
+          // Find the new conversation in the loaded list
+          const newConversation = loadedConversations.find(
+            (conv: Conversation) => conv.ConversationId === newConversationId
+          );
 
           // Select the newly created conversation
-          const newConv = response.data.newConversation;
-          setSelectedConversation(newConv);
+          if (newConversation) {
+            console.log('Setting selected conversation:', newConversation);
+            setSelectedConversation(newConversation);
+          } else {
+            // If we can't find it in the list, use the response data
+            console.log(
+              'Using response data for conversation:',
+              response.data.newConversation
+            );
+
+            // Make sure the conversation object has all required fields
+            const conversation = {
+              ...response.data.newConversation,
+              // Ensure all required fields are present
+              ConversationId: response.data.newConversation.ConversationId,
+              Name: response.data.newConversation.Name || newChatUsername,
+              EncryptedConversationKey:
+                response.data.newConversation.EncryptedConversationKey ||
+                response.data.newConversation.Users?.find(
+                  (u: { UserId: string }) => u.UserId === user.userId
+                )?.EncryptedConversationKey,
+            };
+
+            setSelectedConversation(conversation);
+
+            // Add conversation to the local list if it's not there
+            if (
+              !conversations.some(
+                (c) => c.ConversationId === conversation.ConversationId
+              )
+            ) {
+              setConversations((prev) => [...prev, conversation]);
+            }
+          }
 
           // Ensure the socket is properly connected
           if (socketRef.current && !socketRef.current.connected) {
@@ -514,11 +586,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       }
     } catch (error: any) {
       console.error('Error creating conversation:', error);
-      alert(
-        error.response?.data?.error ||
-          error.message ||
-          'Failed to create conversation. User might not exist.'
-      );
+
+      // Check if the error is because the conversation already exists
+      if (error.response?.data?.error === 'Conversation already exists') {
+        alert('You already have a conversation with this user.');
+      } else {
+        alert(
+          error.response?.data?.error ||
+            error.message ||
+            'Failed to create conversation. User might not exist.'
+        );
+      }
     }
   };
 
@@ -613,7 +691,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
             </ListItemAvatar>
             <ListItemText
               primary={conversation.Name || 'Unknown'}
-              secondary='Last message preview...'
+              secondary=''
               primaryTypographyProps={{ noWrap: true }}
               secondaryTypographyProps={{ noWrap: true }}
             />

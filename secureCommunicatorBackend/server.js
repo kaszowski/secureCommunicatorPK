@@ -198,6 +198,52 @@ io.on("connection", async (socket) => {
       console.log(err);
     }
   });
+  socket.on("join", async (data) => {
+    try {
+      // Validate the conversationId
+      if (!data || !data.conversationId) {
+        return socket.emit("error", "Missing conversationId in join request");
+      }
+
+      const conversationId = data.conversationId.toString();
+      console.log(
+        `User ${socket.userId} attempting to join conversation ${conversationId}`
+      );
+
+      // Check if the conversation exists and the user is a member
+      const userConversations = await userQueries.GET.getUserConversations(
+        socket.userId
+      );
+      const isUserInConversation = userConversations.some(
+        (conv) => conv.ConversationId.toString() === conversationId
+      );
+
+      if (!isUserInConversation) {
+        console.error(
+          `User ${socket.userId} tried to join conversation ${conversationId} they are not a member of`
+        );
+        return socket.emit("error", "invalid conversationId");
+      }
+
+      // Join the room if not already joined
+      if (!socket.rooms.has(conversationId)) {
+        socket.join(conversationId);
+        console.log(
+          `User ${socket.userId} joined conversation ${conversationId}`
+        );
+      } else {
+        console.log(
+          `User ${socket.userId} already in conversation ${conversationId}`
+        );
+      }
+
+      // Acknowledge successful join
+      socket.emit("joinedConversation", { conversationId });
+    } catch (err) {
+      console.error("Error handling join request:", err);
+      socket.emit("error", "Error joining conversation: " + err.message);
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log(`User ${socket.userId} disconnected`);
