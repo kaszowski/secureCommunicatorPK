@@ -1,4 +1,7 @@
 // Helper script to generate RSA keys for seed data
+// WARNING: THIS IS A DEVELOPMENT TOOL ONLY.
+// DO NOT INCLUDE OR USE IN PRODUCTION ENVIRONMENT.
+// Keys generated here will be output to console for development purposes only.
 const crypto = require("crypto");
 
 // Generate RSA key pair for a user

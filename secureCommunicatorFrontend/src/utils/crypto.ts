@@ -243,7 +243,6 @@ export const downloadPrivateKey = (
  */
 export const validatePemFormat = (key: string): boolean => {
   if (!key || typeof key !== 'string') {
-    console.warn('Invalid key: key is empty or not a string');
     return false;
   }
 
@@ -251,7 +250,6 @@ export const validatePemFormat = (key: string): boolean => {
 
   // Debug key format issues
   if (key.length < 20) {
-    console.warn('Key is too short to be valid');
     return false;
   }
 
@@ -274,11 +272,6 @@ export const validatePemFormat = (key: string): boolean => {
     !rsaPrivateKeyRegex.test(key) &&
     !rsaPublicKeyRegex.test(key)
   ) {
-    console.warn(
-      "Key format validation failed: key doesn't match PEM format patterns"
-    );
-    // Print the first few characters for debugging (without revealing the entire key)
-    console.debug('Key starts with:', key.substring(0, 30) + '...');
     return false;
   }
 
@@ -369,9 +362,6 @@ export const decryptConversationKey = async (
     // Check if the private key is encrypted (starts with "U2FsdGVkX1" which is the CryptoJS salt marker)
     let actualPrivateKey = privateKeyPem;
     if (privateKeyPem && privateKeyPem.startsWith('U2FsdGVkX1')) {
-      console.debug(
-        'Detected encrypted private key, attempting to decrypt with session data'
-      );
       try {
         // Try to decrypt with stored password from session
         const sessionData = sessionStorage.getItem('userData');

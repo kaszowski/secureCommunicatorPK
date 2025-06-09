@@ -19,7 +19,6 @@ router.post("/login", async (req, res) => {
   if (typeof username !== "string" || typeof password !== "string") {
     return res.status(400).json({ error: "Invalid input format" });
   }
-
   // Validate that password is hashed (should be hex string of expected length)
   if (!/^[a-f0-9]{64}$/i.test(password)) {
     return res
@@ -27,18 +26,15 @@ router.post("/login", async (req, res) => {
       .json({ error: "Password must be properly hashed on client-side" });
   }
 
-  console.log(`Login attempt: ${username}`);
   try {
     // Użyj tabeli 'User' i kolumny 'user_id' oraz 'password_hash'
     //const user = await knex('User').where({ username: username }).first();
-    console.log(username, password);
     const user = await userQueries.POST.loginUser(username, password);
     if (user) {
       const token = jwt.sign({ userId: user }, SECRET_KEY, {
         expiresIn: `${tokenLifeInMinutes}m`,
       });
       const isMobile = req.headers["x-client-type"] === "mobile";
-      console.log("Mobilna: ", isMobile);
       const expiresAt = Date.now() + tokenLifeInMinutes * 60 * 1000;
       if (isMobile) {
         return res.json({ token: token, expiresAt: expiresAt });
@@ -56,11 +52,9 @@ router.post("/login", async (req, res) => {
         return res.json({ success: true });
       }
     } else {
-      console.log(`Invalid credentials for user: ${username}`);
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
-    console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

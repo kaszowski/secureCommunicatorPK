@@ -9,11 +9,9 @@ router.get("/key/public", async (req, res) => {
       return res.status(400).json({ error: "No username provided" });
     const user = await userQueries.GET.findUserByUsername(username);
     if (!user) return res.status(404).json({ error: "User not found" });
-
     const keys = await userQueries.GET.getUserKeys(user.UserId);
     res.json({ keys: keys.PublicKey });
   } catch (err) {
-    console.error("Error fetching keys:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -23,11 +23,9 @@ router.get("/messages", async (req, res) => {
     ) {
       return res.status(400).json({ error: "Invalid limit or offset" });
     }
-
     const conversationsData = await userQueries.GET.getUserConversations(
       req.userId
     );
-    console.log(conversationsData);
 
     if (
       !conversationsData.some((obj) => obj.ConversationId == conversationId)
@@ -44,7 +42,6 @@ router.get("/messages", async (req, res) => {
     );
     res.json({ messages: messages });
   } catch (err) {
-    console.error("Error fetching messages:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

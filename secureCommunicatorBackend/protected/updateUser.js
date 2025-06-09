@@ -11,8 +11,6 @@ router.post("/updateUser", async (req, res) => {
     const changed = await userQueries.UPDATE.updateUser(req.userId, updates);
     res.json({ success: changed });
   } catch (err) {
-    console.error("Error updating user:", err.message);
-
     // Send more specific error messages to the client
     if (err.message === "Podane obecne hasło jest nieprawidłowe.") {
       return res.status(401).json({ error: "Current password is incorrect" });

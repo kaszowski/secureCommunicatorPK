@@ -36,12 +36,9 @@ router.post("/conversation/create", async (req, res) => {
       } else {
         return res.status(400).json({ error: "Conversation already exists" });
       }
-    }
-
-    // It's a new conversation
+    } // It's a new conversation
     res.json({ newConversation: result });
   } catch (err) {
-    console.error("Error creating conversation:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

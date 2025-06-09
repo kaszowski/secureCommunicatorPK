@@ -48,7 +48,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           setDisplayName(response.data.profile.UsernameShow || '');
         }
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        // Silent error handling
       } finally {
         setLoading(false);
       }
@@ -124,7 +124,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         setError('Failed to update profile');
       }
     } catch (error: any) {
-      console.error('Error updating profile:', error);
       setError(
         error.response?.data?.error ||
           error.message ||

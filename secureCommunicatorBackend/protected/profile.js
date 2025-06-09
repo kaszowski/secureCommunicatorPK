@@ -17,7 +17,6 @@ router.get("/profile", async (req, res) => {
       updatedAt: user.UpdatedAt,
     });
   } catch (err) {
-    console.error("Error fetching user profile:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
