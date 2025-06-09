@@ -8,7 +8,7 @@ import {
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import { LoginPage, ChatPage } from './components';
+import { LoginPage } from './components';
 import api from './utils/api';
 
 const theme = createTheme({
@@ -135,28 +135,6 @@ function App() {
               </PublicRoute>
             }
           />
-
-          {/* Chat route - only accessible when authenticated */}
-          <Route
-            path='/chat'
-            element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                {user ? (
-                  <ChatPage user={user} onLogout={handleLogout} />
-                ) : (
-                  <Box
-                    display='flex'
-                    justifyContent='center'
-                    alignItems='center'
-                    minHeight='100vh'
-                  >
-                    <Typography>Loading user data...</Typography>
-                  </Box>
-                )}
-              </ProtectedRoute>
-            }
-          />
-
           {/* Catch all route - redirect to home */}
           <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>
