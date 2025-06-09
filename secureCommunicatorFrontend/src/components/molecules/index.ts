@@ -4,3 +4,4 @@ export { MessageInput } from './MessageInput';
 export { KeyStorageChoice } from './KeyStorageChoice';
 export type { KeyStorageOption } from './KeyStorageChoice';
 export { PrivateKeyImport } from './PrivateKeyImport';
+export { SettingsDialog } from './SettingsDialog';

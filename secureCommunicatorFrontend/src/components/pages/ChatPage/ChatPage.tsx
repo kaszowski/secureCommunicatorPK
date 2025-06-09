@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { MessageInput } from '../../molecules';
 import { PrivateKeyImport } from '../../molecules';
+import { SettingsDialog } from '../../molecules';
 import api from '../../../utils/api';
 import { io, Socket } from 'socket.io-client';
 import {
@@ -86,6 +87,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [newChatDialog, setNewChatDialog] = useState(false);
   const [newChatUsername, setNewChatUsername] = useState('');
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
   // Encryption state
   const [conversationKeys, setConversationKeys] = useState<Map<string, string>>(
@@ -874,7 +876,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            setSettingsDialogOpen(true);
+          }}
+        >
           <Settings sx={{ mr: 1 }} />
           Settings
         </MenuItem>
@@ -918,6 +925,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         onClose={() => {}} // Don't allow closing without importing key
         onImport={handlePrivateKeyImport}
         username={user.username}
+      />
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onClose={() => setSettingsDialogOpen(false)}
+        user={user}
       />
     </Box>
   );
