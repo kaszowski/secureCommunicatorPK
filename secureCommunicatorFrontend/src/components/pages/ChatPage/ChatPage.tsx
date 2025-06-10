@@ -95,6 +95,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
   );
   const [userPrivateKey, setUserPrivateKey] = useState<string | null>(null);
   const [needsPrivateKey, setNeedsPrivateKey] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<any[]>([]);
 
   // Socket and refs
   const socketRef = useRef<Socket | null>(null);
@@ -118,7 +119,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       });
 
       socketRef.current.on('connect', () => {
-        console.log('Connected to chat server');
+        // Connected to chat server
       });
 
       socketRef.current.on('connect_error', (error) => {
@@ -126,44 +127,45 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       });
 
       socketRef.current.on('message', async (msg: any) => {
-        console.log('Received message:', msg);
-
         try {
           // Get conversation key for decryption
           const conversationKey = await getConversationKey(msg.conversationId);
           if (!conversationKey) {
-            console.error(
-              'Unable to get conversation key for incoming message'
-            );
+            // If we don't have the conversation data yet, store for later processing
+            if (conversations.length === 0 || !userPrivateKey) {
+              setPendingMessages((prev: any[]) => [...prev, msg]);
+              return;
+            }
             return;
           }
 
           // Decrypt the incoming message
           const decryptedContent = decryptMessage(msg.message, conversationKey);
+          if (!decryptedContent) {
+            return;
+          }
 
-          // Handle incoming messages
+          // Add the decrypted message to state
           const newMessage: Message = {
-            MessageId: `temp-${Date.now()}-${Math.random()}`,
+            MessageId: `received-${Date.now()}`,
             UserId: msg.sender,
             ConversationId: msg.conversationId,
-            Content: decryptedContent || 'Unable to decrypt message',
+            Content: decryptedContent,
             SendAt: new Date().toISOString(),
           };
 
-          setMessages((prev) => [...prev, newMessage]);
+          // Only add if it's for the currently selected conversation
+          if (selectedConversation?.ConversationId === msg.conversationId) {
+            setMessages((prev) => [...prev, newMessage]);
+          }
         } catch (error) {
-          console.error('Error processing incoming message:', error);
+          // Error processing incoming message
         }
       });
 
       socketRef.current.on('error', (error: string) => {
-        console.error('Socket error:', error);
-
         // If it's an invalid conversationId error, we might need to reload conversations
         if (error.includes('invalid conversationId')) {
-          console.log(
-            'Invalid conversation ID detected, refreshing conversation data'
-          );
           // Reload conversations to get the latest data
           loadConversations();
           return;
@@ -176,29 +178,18 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       });
 
       socketRef.current.on('disconnect', (reason) => {
-        console.log('Disconnected from chat server:', reason);
         // If disconnected due to auth issues, logout the user
         if (reason === 'io server disconnect') {
           onLogout();
         }
       });
 
-      socketRef.current.on('reconnect', (attemptNumber) => {
-        console.log(
-          'Reconnected to chat server after',
-          attemptNumber,
-          'attempts'
-        );
-
+      socketRef.current.on('reconnect', () => {
         // After reconnection, refresh conversation list to ensure socket has latest data
         loadConversations();
 
         // Rejoin the current conversation if there is one
-        if (selectedConversation) {
-          console.log(
-            'Rejoining conversation after reconnect:',
-            selectedConversation.ConversationId
-          );
+        if (selectedConversation && socketRef.current) {
           socketRef.current.emit('join', {
             conversationId: selectedConversation.ConversationId,
           });
@@ -206,8 +197,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       });
 
       // Handle successful join acknowledgment
-      socketRef.current.on('joinedConversation', (data) => {
-        console.log('Successfully joined conversation:', data.conversationId);
+      socketRef.current.on('joinedConversation', () => {
+        // Successfully joined conversation
       });
     };
 
@@ -238,7 +229,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         setNeedsPrivateKey(true);
       }
     } catch (error) {
-      console.error('Error loading user keys:', error);
       setNeedsPrivateKey(true);
     }
   };
@@ -265,7 +255,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         (c) => c.ConversationId === conversationId
       );
       if (!conversation || !userPrivateKey) {
-        console.error('Missing conversation or private key');
         return null;
       }
 
@@ -285,7 +274,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
       return null;
     } catch (error) {
-      console.error('Error getting conversation key:', error);
       return null;
     }
   };
@@ -298,15 +286,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       // Create a function to join the conversation via socket
       const joinConversation = () => {
         if (socketRef.current && socketRef.current.connected) {
-          console.log(
-            'Joining conversation:',
-            selectedConversation.ConversationId
-          );
           socketRef.current.emit('join', {
             conversationId: selectedConversation.ConversationId,
           });
         } else {
-          console.warn('Socket not connected, will retry joining conversation');
           // Try to reconnect if not connected
           if (socketRef.current && !socketRef.current.connected) {
             socketRef.current.connect();
@@ -333,6 +316,43 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Process pending messages when conversations and private key become available
+  useEffect(() => {
+    if (userPrivateKey && conversations.length > 0 && pendingMessages.length > 0) {
+      const processPendingMessages = async () => {
+        for (const msg of pendingMessages) {
+          try {
+            const conversationKey = await getConversationKey(msg.conversationId);
+            if (conversationKey) {
+              const decryptedContent = decryptMessage(msg.message, conversationKey);
+              if (decryptedContent) {
+                const newMessage: Message = {
+                  MessageId: `received-${Date.now()}-${Math.random()}`,
+                  UserId: msg.sender,
+                  ConversationId: msg.conversationId,
+                  Content: decryptedContent,
+                  SendAt: new Date().toISOString(),
+                };
+
+                // Add message if it's for the currently selected conversation
+                if (selectedConversation?.ConversationId === msg.conversationId) {
+                  setMessages((prev) => [...prev, newMessage]);
+                }
+              }
+            }
+          } catch (error) {
+            // Error processing pending message
+          }
+        }
+        
+        // Clear pending messages after processing
+        setPendingMessages([]);
+      };
+      
+      processPendingMessages();
+    }
+  }, [userPrivateKey, conversations, pendingMessages, selectedConversation]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -353,7 +373,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       // Return the loaded conversations for immediate use
       return loadedConversations;
     } catch (error) {
-      console.error('Error loading conversations:', error);
       return [];
     }
   };
@@ -374,17 +393,14 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
               newKeys.set(conversation.ConversationId, decryptedKey);
             }
           } catch (error) {
-            console.error(
-              `Error decrypting key for conversation ${conversation.ConversationId}:`,
-              error
-            );
+            // Error decrypting key for conversation
           }
         }
       }
 
       setConversationKeys(newKeys);
     } catch (error) {
-      console.error('Error preloading conversation keys:', error);
+      // Error preloading conversation keys
     }
   };
 
@@ -404,7 +420,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
       // Get conversation key for decryption
       const conversationKey = await getConversationKey(conversationId);
       if (!conversationKey) {
-        console.error('Unable to get conversation key for decryption');
         setMessages([]);
         return;
       }
@@ -422,7 +437,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
             Content: decryptedContent || 'Unable to decrypt message',
           };
         } catch (error) {
-          console.error('Error decrypting message:', error);
           return {
             ...message,
             Content: 'Unable to decrypt message',
@@ -432,7 +446,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
       setMessages(decryptedMessages);
     } catch (error) {
-      console.error('Error loading messages:', error);
       setMessages([]);
     }
   };
@@ -446,7 +459,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         selectedConversation.ConversationId
       );
       if (!conversationKey) {
-        console.error('Unable to get conversation key for encryption');
         return;
       }
 
@@ -472,11 +484,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
         setMessages((prev) => [...prev, newMessage]);
       } else {
-        console.error('Socket not connected');
-        // You could add a toast notification here
+        // Socket not connected
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      // Error sending message
     }
   };
 
@@ -542,14 +553,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
           // Select the newly created conversation
           if (newConversation) {
-            console.log('Setting selected conversation:', newConversation);
             setSelectedConversation(newConversation);
           } else {
             // If we can't find it in the list, use the response data
-            console.log(
-              'Using response data for conversation:',
-              response.data.newConversation
-            );
 
             // Make sure the conversation object has all required fields
             const conversation = {
@@ -578,7 +584,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
 
           // Ensure the socket is properly connected
           if (socketRef.current && !socketRef.current.connected) {
-            console.log('Reconnecting socket after conversation creation');
             socketRef.current.connect();
           }
         }
@@ -587,8 +592,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         setNewChatUsername('');
       }
     } catch (error: any) {
-      console.error('Error creating conversation:', error);
-
       // Check if the error is because the conversation already exists
       if (error.response?.data?.error === 'Conversation already exists') {
         alert('You already have a conversation with this user.');
@@ -606,7 +609,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
     try {
       await api.post('/logout');
     } catch (error) {
-      console.error('Logout error:', error);
+      // Logout error
     } finally {
       // Clean up sensitive data from session storage
       sessionStorage.removeItem('userData');
