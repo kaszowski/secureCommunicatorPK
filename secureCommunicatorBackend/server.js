@@ -62,10 +62,14 @@ const io = new Server(httpsServer, {
       "http://localhost:80",
       "https://localhost",
       "https://localhost:80",
+      "http://localhost:5173", // Vite dev server
+      "https://localhost:5173",
     ],
     methods: ["GET", "POST"],
     credentials: true,
   },
+  allowEIO3: true,
+  transports: ["websocket", "polling"],
 });
 
 async function getUserConversations(userId) {
@@ -110,42 +114,47 @@ function tokenMiddleware(req, res, next) {
     req.userId = payload.userId;
     next();
   } catch (err) {
-    console.error("Auth error:", err);
     res.status(401).json({ error: "Unauthorized" });
   }
 }
 
 io.on("connection", async (socket) => {
-  console.log("A client connected via HTTPS");
   const authCookies = socket.handshake.headers.cookie;
+
   try {
-    token = cookie.parse(authCookies).token;
-    data = jwt.verify(token, SECRET_KEY);
+    if (!authCookies) {
+      throw new Error("No cookies found");
+    }
+
+    const parsedCookies = cookie.parse(authCookies);
+    const token = parsedCookies.token;
+
+    if (!token) {
+      throw new Error("No token found in cookies");
+    }
+
+    const data = jwt.verify(token, SECRET_KEY);
+
     if (blacklist.has(token)) {
-      socket.emit("error", "Invalid token");
-      socket.disconnect(true);
-      return;
+      throw new Error("Token is blacklisted");
     }
     socket.exp = data.exp;
     socket.userId = data.userId;
+
     const conversationIds = await userQueries.GET.getUserConversations(
       data.userId
     );
-    console.log(conversationIds);
-    //conversationsData.some(obj => obj.ConversationId==conversationId)
     conversationIds.forEach((element) => {
-      socket.join(element.ConversationId.toString()); // Upewnij się, że ID jest stringiem
+      socket.join(element.ConversationId.toString());
     });
-    console.log(`User ${socket.userId} connected. Rooms:`, socket.rooms);
   } catch (err) {
-    console.error("Auth error:", err.message);
-    socket.emit("error", "Invalid token");
+    socket.emit("error", "Authentication failed: " + err.message);
     socket.disconnect(true);
+    return;
   }
   socket.on("message", async (msg) => {
     try {
       const { conversationId, content } = msg;
-      console.log("Received message:", conversationId, content);
 
       if (!conversationId) {
         return socket.emit("error", "no conversationId");
@@ -167,19 +176,51 @@ io.on("connection", async (socket) => {
         socket.userId,
         content
       );
-
       socket.to(conversationId.toString()).emit("message", {
         sender: socket.userId,
         message: content,
         conversationId: conversationId,
       });
     } catch (err) {
-      console.log(err);
+      // Handle error silently
+    }
+  });
+  socket.on("join", async (data) => {
+    try {
+      // Validate the conversationId
+      if (!data || !data.conversationId) {
+        return socket.emit("error", "Missing conversationId in join request");
+      }
+
+      const conversationId = data.conversationId.toString();
+
+      // Check if the conversation exists and the user is a member
+      const userConversations = await userQueries.GET.getUserConversations(
+        socket.userId
+      );
+      const isUserInConversation = userConversations.some(
+        (conv) => conv.ConversationId.toString() === conversationId
+      );
+
+      if (!isUserInConversation) {
+        console.error(
+          `User ${socket.userId} tried to join conversation ${conversationId} they are not a member of`
+        );
+        return socket.emit("error", "invalid conversationId");
+      } // Join the room if not already joined
+      if (!socket.rooms.has(conversationId)) {
+        socket.join(conversationId);
+      }
+
+      // Acknowledge successful join
+      socket.emit("joinedConversation", { conversationId });
+    } catch (err) {
+      socket.emit("error", "Error joining conversation: " + err.message);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log(`User ${socket.userId} disconnected`);
+    // Handle disconnect silently
   });
 });
 
@@ -200,6 +241,9 @@ app.use(registerRoute);
 const getPublicKey = require("./unprotected/getPublicKey");
 app.use(getPublicKey);
 
+const logoutRoutes = require("./protected/logout");
+app.use(logoutRoutes);
+
 const conversationsRoute = require("./protected/conversations");
 app.use(tokenMiddleware, conversationsRoute);
 
@@ -209,14 +253,14 @@ app.use(tokenMiddleware, messagesRoute);
 const keysRoutes = require("./protected/keys");
 app.use(tokenMiddleware, keysRoutes);
 
+const profileRoute = require("./protected/profile");
+app.use(tokenMiddleware, profileRoute);
+
 const updateUser = require("./protected/updateUser");
 app.use(tokenMiddleware, updateUser);
 
 const refreshTokenRoutes = require("./protected/refreshToken");
 app.use(tokenMiddleware, refreshTokenRoutes);
-
-const logoutRoutes = require("./protected/logout");
-app.use(tokenMiddleware, logoutRoutes);
 
 const createConversationRoute = require("./protected/createConversation");
 app.use(tokenMiddleware, createConversationRoute);
@@ -225,10 +269,8 @@ app.use(tokenMiddleware, createConversationRoute);
 async function checkDbConnection() {
   try {
     await knex.raw("select 1+1 as result");
-    console.log("Database connection successful.");
     return true;
   } catch (err) {
-    console.error("Database connection failed:", err);
     return false;
   }
 }
@@ -237,17 +279,12 @@ async function checkDbConnection() {
 checkDbConnection()
   .then((isConnected) => {
     if (!isConnected) {
-      console.error("Exiting due to database connection failure.");
       process.exit(1); // Zakończ proces, jeśli nie można połączyć się z bazą
     }
 
     httpsServer.listen(HTTPS_PORT, () => {
-      console.log(
-        `Secure WebSocket server running on https://localhost:${HTTPS_PORT}`
-      );
-    });
-
-    // Create an HTTP server to redirect traffic to HTTPS
+      // Server started successfully
+    }); // Create an HTTP server to redirect traffic to HTTPS
     const httpApp = express();
 
     httpApp.use((req, res) => {
@@ -256,11 +293,10 @@ checkDbConnection()
 
     const HTTP_PORT = 80; // Może wymagać uprawnień administratora
     http.createServer(httpApp).listen(HTTP_PORT, () => {
-      console.log(`HTTP redirector running on http://localhost:${HTTP_PORT}`);
+      // HTTP redirector started
     });
   })
   .catch((err) => {
     // Ten catch jest na wszelki wypadek, główna obsługa błędu jest w checkDbConnection
-    console.error("Failed to initialize server:", err);
     process.exit(1);
   });

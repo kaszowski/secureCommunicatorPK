@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react-swc';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/sc/',
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -12,6 +13,4 @@ export default defineConfig({
     },
     // No proxy needed since nginx will handle routing
   },
-  // Configure base path for production if needed
-  // base: '/app/',
 });

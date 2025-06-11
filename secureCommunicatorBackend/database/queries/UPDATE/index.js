@@ -5,7 +5,7 @@ const knex = require('knex')(knexConfig);
  * Aktualizuje dane użytkownika.
  * @param {string} userId - ID użytkownika do aktualizacji.
  * @param {object} updates - Obiekt zawierający pola do aktualizacji oraz `currentPassword`.
- *                           Pola do aktualizacji mogą obejmować: `username`, `usernameShow`, `email`, `newPassword`.
+ *                           Pola do aktualizacji mogą obejmować: `username`, `usernameShow`, `email`, `newPassword`, `PrivateKey`.
  *                           Pole `currentPassword` (obecne hasło użytkownika) jest wymagane do autoryzacji jakiejkolwiek zmiany
  *                           i musi zgadzać się z hasłem przechowywanym w bazie danych.
  * @returns {Promise<boolean>} True, jeśli aktualizacja się powiodła. False, jeśli użytkownik nie został znaleziony
@@ -48,6 +48,11 @@ async function updateUser(userId, updates)
         if (updates.email && updates.email !== user.Email) 
         {
             updateData.Email = updates.email;
+        }
+
+        if (updates.PrivateKey && updates.PrivateKey !== user.PrivateKey)
+        {
+            updateData.PrivateKey = updates.PrivateKey;
         }
 
         if (updates.newPassword) 
