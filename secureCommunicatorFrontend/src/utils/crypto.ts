@@ -67,33 +67,8 @@ export const validatePasswordStrength = (
 };
 
 /**
- * Generate a random salt for additional security
- * @returns A random salt string
- */
-export const generateSalt = (): string => {
-  return CryptoJS.lib.WordArray.random(128 / 8).toString(CryptoJS.enc.Hex);
-};
-
-/**
- * Hash a password with a salt using SHA-256
- * @param password - The plain text password
- * @param salt - The salt to use
- * @returns The salted and hashed password
- */
-export const hashPasswordWithSalt = (
-  password: string,
-  salt: string
-): string => {
-  if (!password || !salt) {
-    throw new Error('Password and salt are required');
-  }
-
-  return CryptoJS.SHA256(password + salt).toString(CryptoJS.enc.Hex);
-};
-
-/**
  * Generate proper RSA key pair using Web Crypto API
- * @returns A proper RSA key pair object with PEM formatted keys
+ * @returns A proper RSA key pair object with keys as base64 strings (without PEM headers)
  */
 export const generateKeyPair = async (): Promise<{
   publicKey: string;
@@ -118,9 +93,6 @@ export const generateKeyPair = async (): Promise<{
       keyPair.publicKey
     );
     const publicKeyBase64 = arrayBufferToBase64(publicKeyArrayBuffer);
-    const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${formatBase64ForPem(
-      publicKeyBase64
-    )}\n-----END PUBLIC KEY-----`;
 
     // Export private key
     const privateKeyArrayBuffer = await window.crypto.subtle.exportKey(
@@ -128,28 +100,22 @@ export const generateKeyPair = async (): Promise<{
       keyPair.privateKey
     );
     const privateKeyBase64 = arrayBufferToBase64(privateKeyArrayBuffer);
-    const privateKeyPem = `-----BEGIN PRIVATE KEY-----\n${formatBase64ForPem(
-      privateKeyBase64
-    )}\n-----END PRIVATE KEY-----`;
 
     return {
-      publicKey: publicKeyPem,
-      privateKey: privateKeyPem,
+      publicKey: publicKeyBase64,
+      privateKey: privateKeyBase64,
     };
-  } catch (error) {
+  } 
+  catch (error) 
+  {
     console.error('Error generating key pair:', error);
     // Fallback to mock keys for development/testing
     const keyData = CryptoJS.lib.WordArray.random(256 / 8).toString(
       CryptoJS.enc.Hex
     );
     return {
-      publicKey: `-----BEGIN PUBLIC KEY-----\n${keyData.substring(
-        0,
-        32
-      )}\n-----END PUBLIC KEY-----`,
-      privateKey: `-----BEGIN PRIVATE KEY-----\n${keyData.substring(
-        32
-      )}\n-----END PRIVATE KEY-----`,
+      publicKey: keyData.substring(0, 32),
+      privateKey: keyData.substring(32),
     };
   }
 };
@@ -160,7 +126,8 @@ export const generateKeyPair = async (): Promise<{
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
+  for (let i = 0; i < bytes.byteLength; i++) 
+  {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
@@ -197,11 +164,14 @@ export const decryptPrivateKey = (
   encryptedPrivateKey: string,
   password: string
 ): string | null => {
-  try {
+  try 
+  {
     const decrypted = CryptoJS.AES.decrypt(encryptedPrivateKey, password);
     const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
     return decryptedString || null;
-  } catch (error) {
+  } 
+  catch (error) 
+  {
     console.error('Error decrypting private key:', error);
     return null;
   }
@@ -237,45 +207,27 @@ export const downloadPrivateKey = (
 };
 
 /**
- * Validate PEM format private key
+ * Validate key format
  * @param key - The key string to validate
- * @returns True if the key appears to be in valid PEM format
+ * @returns True if the key appears to be valid
  */
 export const validatePemFormat = (key: string): boolean => {
-  if (!key || typeof key !== 'string') {
+  if (!key || typeof key !== 'string') 
+  {
     return false;
   }
 
   key = key.trim();
 
   // Debug key format issues
-  if (key.length < 20) {
+  if (key.length < 20) 
+  {
     return false;
   }
 
-  // Check for standard PEM format header and footer
-  const privateKeyRegex =
-    /-----BEGIN PRIVATE KEY-----[\s\S]+-----END PRIVATE KEY-----/;
-  const publicKeyRegex =
-    /-----BEGIN PUBLIC KEY-----[\s\S]+-----END PUBLIC KEY-----/;
-
-  // Also support RSA-specific formats
-  const rsaPrivateKeyRegex =
-    /-----BEGIN RSA PRIVATE KEY-----[\s\S]+-----END RSA PRIVATE KEY-----/;
-  const rsaPublicKeyRegex =
-    /-----BEGIN RSA PUBLIC KEY-----[\s\S]+-----END RSA PUBLIC KEY-----/;
-
-  // Log more detailed information for debugging
-  if (
-    !privateKeyRegex.test(key) &&
-    !publicKeyRegex.test(key) &&
-    !rsaPrivateKeyRegex.test(key) &&
-    !rsaPublicKeyRegex.test(key)
-  ) {
-    return false;
-  }
-
-  return true;
+  // Simple validation for base64 content
+  const base64Regex = /^[A-Za-z0-9+/]*={0,3}$/;
+  return base64Regex.test(key.replace(/\s/g, ''));
 };
 
 /**
@@ -289,25 +241,27 @@ export const generateConversationKey = (): string => {
 /**
  * Encrypt conversation key with user's public key using RSA-OAEP
  * @param conversationKey - The symmetric key to encrypt
- * @param publicKeyPem - The user's public key in PEM format
+ * @param publicKey - The user's public key (raw base64 without PEM headers)
  * @returns The encrypted conversation key as base64 string
  */
 export const encryptConversationKey = async (
   conversationKey: string,
-  publicKeyPem: string
+  publicKey: string
 ): Promise<string> => {
-  try {
+  try 
+  {
     // Validate public key format
-    if (!validatePemFormat(publicKeyPem)) {
+    if (!validatePemFormat(publicKey)) 
+    {
       console.error('Invalid public key format');
       throw new Error('Invalid public key format');
     }
 
-    // Convert PEM to ArrayBuffer
-    const publicKeyData = pemToArrayBuffer(publicKeyPem, 'PUBLIC');
+    // Convert base64 to ArrayBuffer directly
+    const publicKeyData = base64ToArrayBuffer(publicKey);
 
     // Import the public key
-    const publicKey = await window.crypto.subtle.importKey(
+    const publicKeyObj = await window.crypto.subtle.importKey(
       'spki',
       publicKeyData,
       {
@@ -326,13 +280,15 @@ export const encryptConversationKey = async (
       {
         name: 'RSA-OAEP',
       },
-      publicKey,
+      publicKeyObj,
       keyData
     );
 
     // Convert to base64
     return arrayBufferToBase64(encryptedKey);
-  } catch (error) {
+  } 
+  catch (error) 
+  {
     console.error('Error encrypting conversation key:', error);
     // Fallback for development - return the key with a prefix indicating it's not encrypted
     return `DEV_FALLBACK:${conversationKey}`;
@@ -342,66 +298,82 @@ export const encryptConversationKey = async (
 /**
  * Decrypt conversation key with user's private key using RSA-OAEP
  * @param encryptedConversationKey - The encrypted conversation key
- * @param privateKeyPem - The user's private key in PEM format
+ * @param privateKey - The user's private key (raw base64 without PEM headers)
  * @returns The decrypted conversation key as hex string
  */
 export const decryptConversationKey = async (
   encryptedConversationKey: string,
-  privateKeyPem: string
+  privateKey: string
 ): Promise<string | null> => {
   try {
     // Handle development fallback
-    if (encryptedConversationKey.startsWith('DEV_FALLBACK:')) {
+    if (encryptedConversationKey.startsWith('DEV_FALLBACK:')) 
+    {
       return encryptedConversationKey.replace('DEV_FALLBACK:', '');
     }
 
     // Log details about the input for debugging
     console.debug('Attempting to decrypt conversation key');
-    console.debug('Private key length:', privateKeyPem?.length || 0);
+    console.debug('Private key length:', privateKey?.length || 0);
 
     // Check if the private key is encrypted (starts with "U2FsdGVkX1" which is the CryptoJS salt marker)
-    let actualPrivateKey = privateKeyPem;
-    if (privateKeyPem && privateKeyPem.startsWith('U2FsdGVkX1')) {
-      try {
+    let actualPrivateKey = privateKey;
+    if (privateKey && privateKey.startsWith('U2FsdGVkX1')) 
+    {
+      try 
+      {
         // Try to decrypt with stored password from session
         const sessionData = sessionStorage.getItem('userData');
-        if (sessionData) {
+        if (sessionData) 
+        {
           const userData = JSON.parse(sessionData);
-          if (userData.password) {
+          if (userData.password) 
+          {
             console.debug(
               'Found password in session, attempting to decrypt private key'
             );
             const decryptedKey = decryptPrivateKey(
-              privateKeyPem,
+              privateKey,
               userData.password
             );
-            if (decryptedKey) {
+            if (decryptedKey) 
+            {
               console.debug('Successfully decrypted private key');
               actualPrivateKey = decryptedKey;
-            } else {
+            } 
+            else 
+            {
               console.error(
                 'Failed to decrypt private key with session password'
               );
               return null;
             }
-          } else {
+          } 
+          else 
+          {
             console.error('No password found in session data');
             return null;
           }
-        } else {
+        } 
+        else 
+        {
           console.error('No session data found to decrypt private key');
           return null;
         }
-      } catch (e) {
+      } 
+      catch (e) 
+      {
         console.error('Error decrypting private key:', e);
         return null;
       }
     }
 
     // Validate private key format
-    if (!validatePemFormat(actualPrivateKey)) {
+    if (!validatePemFormat(actualPrivateKey)) 
+    {
       console.error('Invalid private key format - validation failed');
-      if (actualPrivateKey) {
+      if (actualPrivateKey) 
+      {
         console.debug(
           'Key format starts with:',
           actualPrivateKey.substring(0, 30) + '...'
@@ -414,19 +386,23 @@ export const decryptConversationKey = async (
       return null;
     }
 
-    // Convert PEM to ArrayBuffer
+    // Convert base64 to ArrayBuffer directly
     let privateKeyData;
-    try {
-      privateKeyData = pemToArrayBuffer(actualPrivateKey, 'PRIVATE');
-    } catch (error) {
-      console.error('Failed to convert PEM to ArrayBuffer:', error);
+    try 
+    {
+      privateKeyData = base64ToArrayBuffer(actualPrivateKey);
+    } 
+    catch (error) 
+    {
+      console.error('Failed to convert base64 to ArrayBuffer:', error);
       return null;
     }
 
     // Import the private key
-    let privateKey;
-    try {
-      privateKey = await window.crypto.subtle.importKey(
+    let privateKeyObj;
+    try 
+    {
+      privateKeyObj = await window.crypto.subtle.importKey(
         'pkcs8',
         privateKeyData,
         {
@@ -436,37 +412,47 @@ export const decryptConversationKey = async (
         false,
         ['decrypt']
       );
-    } catch (error) {
+    } 
+    catch (error) 
+    {
       console.error('Failed to import private key:', error);
       return null;
     }
 
     // Properly handle any malformed base64 or encoding issues
     let encryptedData;
-    try {
+    try 
+    {
       encryptedData = base64ToArrayBuffer(encryptedConversationKey);
-    } catch (e) {
+    } 
+    catch (e) 
+    {
       console.error('Invalid base64 in conversation key:', e);
       return null;
     }
 
     // Decrypt the conversation key
-    try {
+    try 
+    {
       const decryptedKey = await window.crypto.subtle.decrypt(
         {
           name: 'RSA-OAEP',
         },
-        privateKey,
+        privateKeyObj,
         encryptedData
       );
 
       // Convert back to string
       return new TextDecoder().decode(decryptedKey);
-    } catch (error) {
+    } 
+    catch (error) 
+    {
       console.error('Error decrypting conversation key:', error);
       return null;
     }
-  } catch (error) {
+  } 
+  catch (error) 
+  {
     console.error('Error in decryptConversationKey:', error);
     return null;
   }
@@ -482,11 +468,14 @@ export const encryptMessage = (
   message: string,
   conversationKey: string
 ): string => {
-  try {
+  try 
+  {
     // Use CryptoJS built-in encryption with random IV
     const encrypted = CryptoJS.AES.encrypt(message, conversationKey);
     return encrypted.toString();
-  } catch (error) {
+  } 
+  catch (error) 
+  {
     console.error('Error encrypting message:', error);
     // Return original message with prefix for development
     return `PLAIN:${message}`;
