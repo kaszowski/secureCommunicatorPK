@@ -13,12 +13,12 @@ import api from './utils/api';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'light', // Główny tryb kolorów (light/dark) - wpływa na wszystkie komponenty
     primary: {
-      main: '#1976d2',
+      main: '#66bb6a', // Główny kolor aplikacji zmieniony na łagodniejszy zielony - przyciski, nagłówki, aktywne elementy
     },
     secondary: {
-      main: '#dc004e',
+      main: '#dc004e', // Drugorzędny kolor - akcenty, dodatkowe przyciski
     },
   },
 });

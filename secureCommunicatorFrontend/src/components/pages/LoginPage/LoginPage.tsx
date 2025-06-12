@@ -156,7 +156,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Tło całej strony logowania - gradient fioletowo-niebieski
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -176,8 +176,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             {/* Header */}
             <Box
               sx={{
-                background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                color: 'white',
+                background: 'linear-gradient(45deg, #66bb6a 30%, #81c784 90%)', // Tło nagłówka w formularzu zmienione na gradient zielony
+                color: 'white', // Kolor tekstu w nagłówku - biały
                 p: 4,
                 textAlign: 'center',
               }}
@@ -285,10 +285,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <Box
               sx={{
                 p: 2,
-                backgroundColor: 'grey.50',
+                backgroundColor: 'grey.50', // Tło stopki formularza - jasny szary
                 textAlign: 'center',
                 borderTop: 1,
-                borderColor: 'divider',
+                borderColor: 'divider', // Kolor obramowania - standardowy kolor dzielnika Material-UI
               }}
             >
               <Typography variant='caption' color='text.secondary'>

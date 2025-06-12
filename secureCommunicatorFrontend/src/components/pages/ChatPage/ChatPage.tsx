@@ -640,10 +640,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        backgroundColor: '#e3f2fd', // Tło obszaru konwersacji zmienione na jasny niebieski
       }}
     >
       {/* Header */}
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', backgroundColor: '#bbdefb' }}>
         <Box
           sx={{
             display: 'flex',
@@ -672,13 +673,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
             sx={{
               cursor: 'pointer',
               '&:hover': {
-                backgroundColor: theme.palette.action.hover,
+                backgroundColor: '#90caf9', // Kolor przy hover na liście konwersacji - średni niebieski
               },
               ...(selectedConversation?.ConversationId ===
                 conversation.ConversationId && {
-                backgroundColor: theme.palette.primary.main + '20',
+                backgroundColor: theme.palette.primary.main + '40', // Tło wybranej konwersacji - łagodny zielony z przezroczystością 40%
                 '&:hover': {
-                  backgroundColor: theme.palette.primary.main + '30',
+                  backgroundColor: theme.palette.primary.main + '60', // Tło wybranej konwersacji przy hover - łagodny zielony z przezroczystością 60%
                 },
               }),
             }}
@@ -797,7 +798,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
                 flex: 1,
                 overflow: 'auto',
                 p: 1,
-                backgroundColor: theme.palette.grey[50],
+                backgroundColor: theme.palette.grey[200], // Tło obszaru wiadomości zmienione na bardziej szary
               }}
             >
               {messages.map((message, index) => (
@@ -817,11 +818,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
                       p: 1.5,
                       maxWidth: '70%',
                       backgroundColor: isMyMessage(message)
-                        ? theme.palette.primary.main
-                        : theme.palette.background.paper,
+                        ? theme.palette.primary.main // Tło moich wiadomości - łagodny zielony
+                        : theme.palette.grey[300], // Tło wiadomości innych zmienione na ciemniejszy szary
                       color: isMyMessage(message)
-                        ? theme.palette.primary.contrastText
-                        : theme.palette.text.primary,
+                        ? theme.palette.primary.contrastText // Kolor tekstu moich wiadomości - kontrast do primary (biały)
+                        : theme.palette.text.primary, // Kolor tekstu wiadomości innych - standardowy kolor tekstu (czarny)
                       borderRadius: 2,
                     }}
                   >
@@ -845,7 +846,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ user, onLogout }) => {
             </Box>
 
             {/* Message Input */}
-            <Box sx={{ p: 2, backgroundColor: 'background.paper' }}>
+            <Box sx={{ p: 2, backgroundColor: theme.palette.grey[100] }}>
               <MessageInput
                 onSendMessage={sendMessage}
                 placeholder={`Message ${selectedConversation.Name}...`}
